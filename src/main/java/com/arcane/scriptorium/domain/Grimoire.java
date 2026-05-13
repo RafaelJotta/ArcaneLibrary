@@ -11,6 +11,11 @@ public final class Grimoire {
         this.lastInscription = "Indice dos encantamentos estavel.";
     }
 
+    // NOVO: Método elegante para o relatório e para os logs
+    public String title() {
+        return title;
+    }
+
     public String read(ProcessDescriptor process) {
         return "%s consultou '%s' rev.%d: %s"
                 .formatted(process.shortName(), title, revision, lastInscription);

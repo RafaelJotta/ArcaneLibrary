@@ -7,29 +7,29 @@ import com.arcane.scriptorium.events.EventBus;
 import com.arcane.scriptorium.events.EventType;
 import com.arcane.scriptorium.events.SimulationEvent;
 import com.arcane.scriptorium.synchronization.AccessPermit;
-import com.arcane.scriptorium.synchronization.ArcaneSynchronizationCoordinator;
+import com.arcane.scriptorium.synchronization.SyncCoordinator;
 import com.arcane.scriptorium.utils.RandomDuration;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 public abstract class ArcaneAgent implements Runnable {
     private final ProcessDescriptor descriptor;
-    private final Grimoire grimoire;
-    private final ArcaneSynchronizationCoordinator coordinator;
+    private final List<Grimoire> grimoires;
+    private final List<SyncCoordinator> coordinators;
     private final SimulationConfig config;
     private final EventBus eventBus;
     private final ProcessMetrics metrics;
 
-    protected ArcaneAgent(
-            ProcessDescriptor descriptor,
-            Grimoire grimoire,
-            ArcaneSynchronizationCoordinator coordinator,
-            SimulationConfig config,
-            EventBus eventBus
-    ) {
+    private Grimoire currentGrimoire;
+    private SyncCoordinator currentCoordinator;
+
+    protected ArcaneAgent(ProcessDescriptor descriptor, List<Grimoire> grimoires,
+                          List<SyncCoordinator> coordinators, SimulationConfig config, EventBus eventBus) {
         this.descriptor = descriptor;
-        this.grimoire = grimoire;
-        this.coordinator = coordinator;
+        this.grimoires = grimoires;
+        this.coordinators = coordinators;
         this.config = config;
         this.eventBus = eventBus;
         this.metrics = new ProcessMetrics(descriptor);
@@ -39,51 +39,43 @@ public abstract class ArcaneAgent implements Runnable {
     public final void run() {
         try {
             while (!Thread.currentThread().isInterrupted()) {
+                // Sorteia primeiro!
+                int index = ThreadLocalRandom.current().nextInt(grimoires.size());
+                this.currentGrimoire = grimoires.get(index);
+                this.currentCoordinator = coordinators.get(index);
+
+                // Descansa depois.
                 rest();
-                waitForAccess();
-                try (AccessPermit permit = coordinator.acquire(descriptor)) {
-                    metrics.registerAccess(permit.waitedMillis());
+
+                // ATUALIZADO: Log seguro usando o currentGrimoire.title()
+                publish(EventType.WAITING, ProcessState.WAITING, "Solicitou acesso a: " + currentGrimoire.title());
+
+                try (AccessPermit permit = currentCoordinator.acquire(descriptor)) {
+                    // ATUALIZADO: Passamos o nome do livro para a métrica
+                    metrics.registerAccess(permit.waitedMillis(), currentGrimoire.title());
                     enterCriticalRegion();
                     Thread.sleep(activityDuration().toMillis());
                 }
             }
-        } catch (InterruptedException interrupted) {
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-        } finally {
-            publish(EventType.STATE, ProcessState.STOPPED, "Processo encerrado.");
         }
     }
 
-    public ProcessMetrics metrics() {
-        return metrics.snapshot();
-    }
-
-    protected final ProcessDescriptor descriptor() {
-        return descriptor;
-    }
-
-    protected final Grimoire grimoire() {
-        return grimoire;
-    }
-
-    protected final SimulationConfig config() {
-        return config;
-    }
+    public ProcessMetrics metrics() { return metrics.snapshot(); }
+    protected final Grimoire grimoire() { return currentGrimoire; }
+    protected final ProcessDescriptor descriptor() { return descriptor; }
+    protected final SimulationConfig config() { return config; }
 
     protected final void publish(EventType type, ProcessState state, String message) {
-        eventBus.publish(SimulationEvent.now(type, descriptor, state, message, coordinator.snapshot()));
+        eventBus.publish(SimulationEvent.now(type, descriptor, state, message, currentCoordinator.snapshot()));
     }
 
     protected abstract Duration activityDuration();
-
     protected abstract void enterCriticalRegion();
 
     private void rest() throws InterruptedException {
-        publish(EventType.STATE, ProcessState.RESTING, "Descansando antes da proxima tentativa.");
+        publish(EventType.STATE, ProcessState.RESTING, "Descansando.");
         Thread.sleep(RandomDuration.between(config.minRest(), config.maxRest()).toMillis());
-    }
-
-    private void waitForAccess() {
-        publish(EventType.WAITING, ProcessState.WAITING, "Solicitou acesso ao grimorio.");
     }
 }

@@ -4,24 +4,17 @@ import com.arcane.scriptorium.domain.AccessRole;
 import com.arcane.scriptorium.domain.Grimoire;
 import com.arcane.scriptorium.domain.ProcessDescriptor;
 import com.arcane.scriptorium.events.EventBus;
-import com.arcane.scriptorium.synchronization.ArcaneSynchronizationCoordinator;
+import com.arcane.scriptorium.synchronization.SyncCoordinator;
+import java.util.List;
 
 public final class AgentFactory {
-    private AgentFactory() {
-    }
+    private AgentFactory() {}
 
-    public static ArcaneAgent create(
-            ProcessDescriptor descriptor,
-            Grimoire grimoire,
-            ArcaneSynchronizationCoordinator coordinator,
-            SimulationConfig config,
-            EventBus eventBus
-    ) {
-        AccessRole role = descriptor.role();
-        return switch (role) {
-            case COMMON_READER -> new CommonReaderAgent(descriptor, grimoire, coordinator, config, eventBus);
-            case CRITICAL_READER -> new CriticalReaderAgent(descriptor, grimoire, coordinator, config, eventBus);
-            case WRITER -> new WriterAgent(descriptor, grimoire, coordinator, config, eventBus);
+    public static ArcaneAgent create(ProcessDescriptor d, List<Grimoire> g, List<SyncCoordinator> c, SimulationConfig config, EventBus eb) {
+        return switch (d.role()) {
+            case COMMON_READER -> new CommonReaderAgent(d, g, c, config, eb);
+            case CRITICAL_READER -> new CriticalReaderAgent(d, g, c, config, eb);
+            case WRITER -> new WriterAgent(d, g, c, config, eb);
         };
     }
 }

@@ -6,70 +6,85 @@ import com.arcane.scriptorium.simulation.SimulationEngine;
 import com.arcane.scriptorium.ui.console.Ansi;
 import com.arcane.scriptorium.ui.console.ConsoleEventRenderer;
 
-import java.time.Duration;
+import java.util.Scanner;
 
 public final class MainTerminal {
-    private static final long DEFAULT_DURATION_MS = 15_000L;
 
     private MainTerminal() {
     }
 
     public static void main(String[] args) {
-        long durationMillis = parseDuration(args);
-
         EventBus eventBus = new EventBus();
         eventBus.addObserver(new ConsoleEventRenderer(Ansi.isEnabled()));
 
         SimulationConfig config = SimulationConfig.defaultConfig()
-                .withDuration(Duration.ofMillis(durationMillis))
                 .withMaxCriticalReadersBeforeWriter(parseCriticalLimit(args));
 
-        SimulationEngine engine = SimulationEngine.defaultScenario(config, eventBus);
-        engine.start();
-        sleep(durationMillis);
-        engine.stop();
+        Scanner scanner = new Scanner(System.in);
+        boolean rodando = true;
 
-        System.out.println();
-        System.out.println(engine.metricsReport());
+        while (rodando) {
+            System.out.println("\n" + "=".repeat(60));
+            System.out.println("🧙 BIBLIOTECA ARCANA - MENU DE CONTROLE 🧙");
+            System.out.println("=".repeat(60));
+            System.out.println("[1] Simulacao Padrao (1 Grimorio, Sincronizacao Perfeita)");
+            System.out.println("[2] Biblioteca Arcana (Multiplos Grimorios) - Em construcao");
+            System.out.println("[3] Modo Caos (Simular Race Condition) - Em construcao");
+            System.out.println("[4] Abraco Mortal (Simular Deadlock) - Em construcao");
+            System.out.println("[0] Sair");
+            System.out.print("Escolha o cenario para apresentar: ");
 
-        System.out.println();
-        System.out.println(Ansi.paint(Ansi.isEnabled(), Ansi.YELLOW, 
-            "DICA: Esta execução ocorreu com a prevenção de inanição (starvation) ATIVADA."));
-        System.out.println(Ansi.paint(Ansi.isEnabled(), Ansi.YELLOW, 
-            "Para visualizar o problema de inanição acontecendo na prática e interagir com o algoritmo,"));
-        System.out.println(Ansi.paint(Ansi.isEnabled(), Ansi.YELLOW, 
-            "abra a Interface Gráfica (GUI) da Biblioteca Arcana."));
-    }
+            String opcao = scanner.nextLine();
+            SimulationEngine engine = null;
 
-    private static long parseDuration(String[] args) {
-        if (args.length == 0) {
-            return DEFAULT_DURATION_MS;
+            switch (opcao) {
+                case "1":
+                    engine = SimulationEngine.defaultScenario(config, eventBus);
+                    break;
+                case "2":
+                    engine = SimulationEngine.libraryScenario(config, eventBus);
+                    break;
+                case "3":
+                    engine = SimulationEngine.chaosScenario(config, eventBus);
+                    break;
+                case "4":
+                    System.out.println(Ansi.paint(Ansi.isEnabled(), Ansi.YELLOW, "-> Cenario de Deadlock sera implementado na proxima etapa."));
+                    continue;
+                case "0":
+                    System.out.println("Fechando as portas da Biblioteca...");
+                    rodando = false;
+                    continue;
+                default:
+                    System.out.println(Ansi.paint(Ansi.isEnabled(), Ansi.RED, "Opcao invalida. Tente novamente."));
+                    continue;
+            }
+
+            if (engine != null) {
+                engine.start();
+                System.out.println("\n" + Ansi.paint(Ansi.isEnabled(), Ansi.GREEN,
+                        ">>> Simulacao rodando em background... Pressione [ENTER] a qualquer momento para interromper e gerar as metricas <<<"));
+
+                // O terminal fica aguardando o professor/você apertar ENTER
+                scanner.nextLine();
+
+                engine.stop();
+
+                System.out.println("\n" + engine.metricsReport());
+                System.out.println("\n" + Ansi.paint(Ansi.isEnabled(), Ansi.YELLOW,
+                        "DICA: Esta execucao ocorreu com a prevencao de inanicao (starvation) ATIVADA."));
+            }
         }
-
-        try {
-            return Math.max(1_000L, Long.parseLong(args[0]));
-        } catch (NumberFormatException ignored) {
-            return DEFAULT_DURATION_MS;
-        }
+        scanner.close();
     }
 
     private static int parseCriticalLimit(String[] args) {
         if (args.length < 2) {
             return SimulationConfig.defaultConfig().maxCriticalReadersBeforeWriter();
         }
-
         try {
             return Math.max(0, Integer.parseInt(args[1]));
         } catch (NumberFormatException ignored) {
             return SimulationConfig.defaultConfig().maxCriticalReadersBeforeWriter();
-        }
-    }
-
-    private static void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
         }
     }
 }
