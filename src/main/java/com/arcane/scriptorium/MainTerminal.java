@@ -30,7 +30,8 @@ public final class MainTerminal {
             System.out.println("[1] Simulacao Padrao (1 Grimorio, Sincronizacao Perfeita)");
             System.out.println("[2] Biblioteca Arcana (Multiplos Grimorios) - Em construcao");
             System.out.println("[3] Modo Caos (Simular Race Condition) - Em construcao");
-            System.out.println("[4] Abraco Mortal (Simular Deadlock) - Em construcao");
+            System.out.println("[4] Abraco Mortal (Simular Deadlock)");
+            System.out.println("[5] Inanicao (Simular Starvation dos Escritores)"); // <- NOVO
             System.out.println("[0] Sair");
             System.out.print("Escolha o cenario para apresentar: ");
 
@@ -48,8 +49,11 @@ public final class MainTerminal {
                     engine = SimulationEngine.chaosScenario(config, eventBus);
                     break;
                 case "4":
-                    System.out.println(Ansi.paint(Ansi.isEnabled(), Ansi.YELLOW, "-> Cenario de Deadlock sera implementado na proxima etapa."));
-                    continue;
+                    engine = SimulationEngine.deadlockScenario(config, eventBus);
+                    break;
+                case "5":
+                    engine = SimulationEngine.starvationScenario(config, eventBus);
+                    break;
                 case "0":
                     System.out.println("Fechando as portas da Biblioteca...");
                     rodando = false;

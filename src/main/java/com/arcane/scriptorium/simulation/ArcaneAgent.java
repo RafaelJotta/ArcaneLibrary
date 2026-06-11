@@ -36,22 +36,18 @@ public abstract class ArcaneAgent implements Runnable {
     }
 
     @Override
-    public final void run() {
+    public void run() { // O modificador 'final' foi removido daqui
         try {
             while (!Thread.currentThread().isInterrupted()) {
-                // Sorteia primeiro!
                 int index = ThreadLocalRandom.current().nextInt(grimoires.size());
                 this.currentGrimoire = grimoires.get(index);
                 this.currentCoordinator = coordinators.get(index);
 
-                // Descansa depois.
                 rest();
 
-                // ATUALIZADO: Log seguro usando o currentGrimoire.title()
                 publish(EventType.WAITING, ProcessState.WAITING, "Solicitou acesso a: " + currentGrimoire.title());
 
                 try (AccessPermit permit = currentCoordinator.acquire(descriptor)) {
-                    // ATUALIZADO: Passamos o nome do livro para a métrica
                     metrics.registerAccess(permit.waitedMillis(), currentGrimoire.title());
                     enterCriticalRegion();
                     Thread.sleep(activityDuration().toMillis());
