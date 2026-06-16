@@ -2,4 +2,7 @@ target/
 out/
 test-out/
 *.class
-.vscode/
+.vscode/.idea/
+target/
+out/
+*.iml
