@@ -1,9 +1,9 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.synchronization;
 
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessDescriptor;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRequest;
 
 public interface SyncCoordinator {
-    AccessPermit acquire(ProcessDescriptor process) throws InterruptedException;
-    void release(ProcessDescriptor process);
+    AccessPermit acquire(AccessRequest process) throws InterruptedException;
+    void release(AccessRequest process);
     SynchronizationSnapshot snapshot();
 }

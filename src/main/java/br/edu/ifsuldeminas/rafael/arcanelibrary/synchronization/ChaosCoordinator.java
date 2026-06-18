@@ -1,15 +1,15 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.synchronization;
 
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessDescriptor;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRequest;
 
 public final class ChaosCoordinator implements SyncCoordinator {
     @Override
-    public AccessPermit acquire(ProcessDescriptor process) {
+    public AccessPermit acquire(AccessRequest process) {
         return new AccessPermit(this, process, 0);
     }
 
     @Override
-    public void release(ProcessDescriptor process) {}
+    public void release(AccessRequest process) {}
 
     @Override
     public SynchronizationSnapshot snapshot() {

@@ -1,6 +1,7 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.domain;
 
 public final class Grimoire {
+
     private final String title;
     private int revision;
     private String lastInscription;
@@ -11,20 +12,41 @@ public final class Grimoire {
         this.lastInscription = "Indice dos encantamentos estavel.";
     }
 
-    // NOVO: Método elegante para o relatório e para os logs
     public String title() {
         return title;
     }
 
-    public String read(ProcessDescriptor process) {
-        return "%s consultou '%s' rev.%d: %s"
-                .formatted(process.shortName(), title, revision, lastInscription);
+    public synchronized int revision() {
+        return revision;
     }
 
-    public String write(ProcessDescriptor process) {
+    public synchronized String lastInscription() {
+        return lastInscription;
+    }
+
+    public synchronized String read(AccessRequest request) {
+        return "%s consultou '%s' rev.%d: %s"
+                .formatted(request.shortName(), title, revision, lastInscription);
+    }
+
+    public synchronized String criticalRead(AccessRequest request) {
+        return "%s realizou pesquisa critica em '%s' rev.%d: %s"
+                .formatted(request.shortName(), title, revision, lastInscription);
+    }
+
+    public synchronized String write(AccessRequest request) {
         revision += 1;
-        lastInscription = "Runa revisada por " + process.shortName();
+        lastInscription = "Runa revisada por " + request.shortName();
+
         return "%s atualizou '%s' para rev.%d"
-                .formatted(process.shortName(), title, revision);
+                .formatted(request.shortName(), title, revision);
+    }
+
+    public synchronized String criticalWrite(AccessRequest request) {
+        revision += 1;
+        lastInscription = "Ritual critico registrado por " + request.shortName();
+
+        return "%s executou ritual critico em '%s' para rev.%d"
+                .formatted(request.shortName(), title, revision);
     }
 }

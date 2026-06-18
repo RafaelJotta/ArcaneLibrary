@@ -1,6 +1,6 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.domain;
 
-public enum ProcessState {
+public enum MageState {
     RESTING,
     WAITING,
     BLOCKED,

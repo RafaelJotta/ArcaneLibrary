@@ -1,7 +1,7 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.synchronization;
 
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRole;
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessDescriptor;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.MageAccessType;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRequest;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.EventBus;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.SimulationEvent;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.SimulationObserver;
@@ -56,15 +56,15 @@ public class ArcaneSynchronizationCoordinatorTest {
 
             for (int i = 1; i <= commonReaders; i++) {
                 submitActor(executor, coordinator, probe, violations, done, startGate,
-                        process(i, AccessRole.COMMON_READER), iterations);
+                        process(i, MageAccessType.SIMPLE_CONSULTATION), iterations);
             }
             for (int i = 1; i <= criticalReaders; i++) {
                 submitActor(executor, coordinator, probe, violations, done, startGate,
-                        process(1_000 + i, AccessRole.CRITICAL_READER), iterations);
+                        process(1_000 + i, MageAccessType.CRITICAL_RESEARCH), iterations);
             }
             for (int i = 1; i <= writers; i++) {
                 submitActor(executor, coordinator, probe, violations, done, startGate,
-                        process(2_000 + i, AccessRole.WRITER), iterations);
+                        process(2_000 + i, MageAccessType.MAGICAL_RITUAL), iterations);
             }
 
             assertTrue(done.await(15, TimeUnit.SECONDS),
@@ -86,8 +86,8 @@ public class ArcaneSynchronizationCoordinatorTest {
             ArcaneSynchronizationCoordinator coordinator =
                     new ArcaneSynchronizationCoordinator(VIP_LIMIT, eventBus);
 
-            ProcessDescriptor firstReader = process(1, AccessRole.COMMON_READER);
-            ProcessDescriptor writer = process(2, AccessRole.WRITER);
+            AccessRequest firstReader = process(1, MageAccessType.SIMPLE_CONSULTATION);
+            AccessRequest writer = process(2, MageAccessType.MAGICAL_RITUAL);
             CountDownLatch readerInside = new CountDownLatch(1);
             CountDownLatch releaseReader = new CountDownLatch(1);
             AtomicBoolean writerEntered = new AtomicBoolean(false);
@@ -118,7 +118,7 @@ public class ArcaneSynchronizationCoordinatorTest {
                     "Escritor nao ficou aguardando.");
 
             for (int i = 0; i < 12; i++) {
-                ProcessDescriptor lateReader = process(100 + i, AccessRole.COMMON_READER);
+                AccessRequest lateReader = process(100 + i, MageAccessType.SIMPLE_CONSULTATION);
                 Thread reader = thread("late-reader-" + i, () -> {
                     try (AccessPermit ignored = coordinator.acquire(lateReader)) {
                         if (!writerEntered.get()) {
@@ -153,8 +153,8 @@ public class ArcaneSynchronizationCoordinatorTest {
             ArcaneSynchronizationCoordinator coordinator =
                     new ArcaneSynchronizationCoordinator(VIP_LIMIT, eventBus);
 
-            ProcessDescriptor firstWriter = process(1, AccessRole.WRITER);
-            ProcessDescriptor secondWriter = process(2, AccessRole.WRITER);
+            AccessRequest firstWriter = process(1, MageAccessType.MAGICAL_RITUAL);
+            AccessRequest secondWriter = process(2, MageAccessType.MAGICAL_RITUAL);
             CountDownLatch firstWriterInside = new CountDownLatch(1);
             CountDownLatch releaseFirstWriter = new CountDownLatch(1);
             AtomicBoolean secondWriterEntered = new AtomicBoolean(false);
@@ -186,7 +186,7 @@ public class ArcaneSynchronizationCoordinatorTest {
 
             int waitingCommonReaders = 10;
             for (int i = 0; i < waitingCommonReaders; i++) {
-                ProcessDescriptor reader = process(100 + i, AccessRole.COMMON_READER);
+                AccessRequest reader = process(100 + i, MageAccessType.SIMPLE_CONSULTATION);
                 Thread commonReader = thread("common-after-writer-" + i, () -> {
                     try (AccessPermit ignored = coordinator.acquire(reader)) {
                         if (!secondWriterEntered.get()) {
@@ -224,11 +224,11 @@ public class ArcaneSynchronizationCoordinatorTest {
 
             CountDownLatch firstReaderInside = new CountDownLatch(1);
             CountDownLatch releaseReaders = new CountDownLatch(1);
-            Queue<AccessRole> entryOrder = new ConcurrentLinkedQueue<>();
+            Queue<MageAccessType> entryOrder = new ConcurrentLinkedQueue<>();
             List<Thread> threads = new ArrayList<>();
 
             Thread commonReader = thread("reader-holder", () -> {
-                try (AccessPermit ignored = coordinator.acquire(process(1, AccessRole.COMMON_READER))) {
+                try (AccessPermit ignored = coordinator.acquire(process(1, MageAccessType.SIMPLE_CONSULTATION))) {
                     firstReaderInside.countDown();
                     await(releaseReaders);
                 }
@@ -239,8 +239,8 @@ public class ArcaneSynchronizationCoordinatorTest {
             assertTrue(firstReaderInside.await(2, TimeUnit.SECONDS), "Leitor inicial nao entrou.");
 
             Thread writer = thread("writer", () -> {
-                try (AccessPermit ignored = coordinator.acquire(process(2, AccessRole.WRITER))) {
-                    entryOrder.add(AccessRole.WRITER);
+                try (AccessPermit ignored = coordinator.acquire(process(2, MageAccessType.MAGICAL_RITUAL))) {
+                    entryOrder.add(MageAccessType.MAGICAL_RITUAL);
                     sleepMillis(20);
                 }
             });
@@ -252,14 +252,14 @@ public class ArcaneSynchronizationCoordinatorTest {
 
             CountDownLatch firstCriticalMayExit = new CountDownLatch(1);
             Thread criticalA = thread("critical-a", () -> {
-                try (AccessPermit ignored = coordinator.acquire(process(3, AccessRole.CRITICAL_READER))) {
-                    entryOrder.add(AccessRole.CRITICAL_READER);
+                try (AccessPermit ignored = coordinator.acquire(process(3, MageAccessType.CRITICAL_RESEARCH))) {
+                    entryOrder.add(MageAccessType.CRITICAL_RESEARCH);
                     await(firstCriticalMayExit);
                 }
             });
             Thread criticalB = thread("critical-b", () -> {
-                try (AccessPermit ignored = coordinator.acquire(process(4, AccessRole.CRITICAL_READER))) {
-                    entryOrder.add(AccessRole.CRITICAL_READER);
+                try (AccessPermit ignored = coordinator.acquire(process(4, MageAccessType.CRITICAL_RESEARCH))) {
+                    entryOrder.add(MageAccessType.CRITICAL_RESEARCH);
                 }
             });
             criticalA.start();
@@ -273,14 +273,14 @@ public class ArcaneSynchronizationCoordinatorTest {
 
             releaseReaders.countDown();
             sleepMillis(50);
-            assertFalse(entryOrder.contains(AccessRole.WRITER),
+            assertFalse(entryOrder.contains(MageAccessType.MAGICAL_RITUAL),
                     "Escritor nao pode entrar enquanto o primeiro leitor critico esta ativo.");
 
             firstCriticalMayExit.countDown();
             joinAll(threads);
 
-            List<AccessRole> order = new ArrayList<>(entryOrder);
-            assertEquals(List.of(AccessRole.CRITICAL_READER, AccessRole.WRITER, AccessRole.CRITICAL_READER), order,
+            List<MageAccessType> order = new ArrayList<>(entryOrder);
+            assertEquals(List.of(MageAccessType.CRITICAL_RESEARCH, MageAccessType.MAGICAL_RITUAL, MageAccessType.CRITICAL_RESEARCH), order,
                     "Ordem esperada com limite VIP=1: critico, escritor, critico.");
             assertNoSnapshotViolations(observer);
         });
@@ -300,7 +300,7 @@ public class ArcaneSynchronizationCoordinatorTest {
             List<Thread> threads = new ArrayList<>();
 
             Thread writerHolder = thread("writer-holder", () -> {
-                try (AccessPermit ignored = coordinator.acquire(process(1, AccessRole.WRITER))) {
+                try (AccessPermit ignored = coordinator.acquire(process(1, MageAccessType.MAGICAL_RITUAL))) {
                     writerInside.countDown();
                     await(releaseWriter);
                 }
@@ -311,12 +311,12 @@ public class ArcaneSynchronizationCoordinatorTest {
             assertTrue(writerInside.await(2, TimeUnit.SECONDS), "Escritor inicial nao entrou.");
 
             for (int i = 0; i < 30; i++) {
-                AccessRole role = switch (i % 3) {
-                    case 0 -> AccessRole.COMMON_READER;
-                    case 1 -> AccessRole.CRITICAL_READER;
-                    default -> AccessRole.WRITER;
+                MageAccessType role = switch (i % 3) {
+                    case 0 -> MageAccessType.SIMPLE_CONSULTATION;
+                    case 1 -> MageAccessType.CRITICAL_RESEARCH;
+                    default -> MageAccessType.MAGICAL_RITUAL;
                 };
-                ProcessDescriptor descriptor = process(100 + i, role);
+                AccessRequest descriptor = process(100 + i, role);
                 Thread waiter = thread("interrupted-waiter-" + i, () -> {
                     try (AccessPermit ignored = coordinator.acquire(descriptor)) {
                         sleepMillis(10);
@@ -371,7 +371,7 @@ public class ArcaneSynchronizationCoordinatorTest {
             List<Thread> threads = new ArrayList<>();
 
             Thread firstWriter = thread("quota-writer-holder", () -> {
-                try (AccessPermit ignored = coordinator.acquire(process(1, AccessRole.WRITER))) {
+                try (AccessPermit ignored = coordinator.acquire(process(1, MageAccessType.MAGICAL_RITUAL))) {
                     firstWriterInside.countDown();
                     await(releaseFirstWriter);
                 }
@@ -382,7 +382,7 @@ public class ArcaneSynchronizationCoordinatorTest {
             assertTrue(firstWriterInside.await(2, TimeUnit.SECONDS), "Primeiro escritor nao entrou.");
 
             Thread secondWriter = thread("quota-second-writer", () -> {
-                try (AccessPermit ignored = coordinator.acquire(process(2, AccessRole.WRITER))) {
+                try (AccessPermit ignored = coordinator.acquire(process(2, MageAccessType.MAGICAL_RITUAL))) {
                     secondWriterEntered.set(true);
                 }
             });
@@ -396,7 +396,7 @@ public class ArcaneSynchronizationCoordinatorTest {
             List<Thread> interruptibleReaders = new ArrayList<>();
             CountDownLatch readersStarted = new CountDownLatch(readers);
             for (int i = 0; i < readers; i++) {
-                ProcessDescriptor reader = process(1_000 + i, AccessRole.COMMON_READER);
+                AccessRequest reader = process(1_000 + i, MageAccessType.SIMPLE_CONSULTATION);
                 Thread thread = new Thread(() -> {
                     readersStarted.countDown();
                     try (AccessPermit ignored = coordinator.acquire(reader)) {
@@ -439,7 +439,7 @@ public class ArcaneSynchronizationCoordinatorTest {
             Queue<String> violations,
             CountDownLatch done,
             CyclicBarrier startGate,
-            ProcessDescriptor process,
+            AccessRequest process,
             int iterations
     ) {
         executor.submit(() -> {
@@ -466,8 +466,8 @@ public class ArcaneSynchronizationCoordinatorTest {
         });
     }
 
-    private static ProcessDescriptor process(int id, AccessRole role) {
-        return new ProcessDescriptor(id, "P" + id, role);
+    private static AccessRequest process(int id, MageAccessType role) {
+        return new AccessRequest(id, "P" + id, role);
     }
 
     private static Thread thread(String name, InterruptibleRunnable runnable) {
@@ -518,7 +518,7 @@ public class ArcaneSynchronizationCoordinatorTest {
         private final AtomicInteger readersInside = new AtomicInteger();
         private final AtomicInteger writersInside = new AtomicInteger();
 
-        void enterReader(ProcessDescriptor process, Queue<String> violations) {
+        void enterReader(AccessRequest process, Queue<String> violations) {
             if (writersInside.get() > 0) {
                 violations.add(process.label() + " entrou lendo com escritor ativo.");
             }
@@ -538,7 +538,7 @@ public class ArcaneSynchronizationCoordinatorTest {
             }
         }
 
-        void enterWriter(ProcessDescriptor process, Queue<String> violations) {
+        void enterWriter(AccessRequest process, Queue<String> violations) {
             int writers = writersInside.incrementAndGet();
             if (writers > 1) {
                 violations.add(process.label() + " entrou com outro escritor ativo.");

@@ -1,8 +1,8 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.simulation;
 
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRole;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.MageAccessType;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.Grimoire;
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessDescriptor;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRequest;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.EventBus;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.EventType;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.SimulationEvent;
@@ -76,10 +76,10 @@ public final class SimulationEngine {
         SyncCoordinator fireCoordinator = new ArcaneSynchronizationCoordinator(config.maxCriticalReadersBeforeWriter(), eventBus);
         SyncCoordinator iceCoordinator = new ArcaneSynchronizationCoordinator(config.maxCriticalReadersBeforeWriter(), eventBus);
 
-        ProcessDescriptor desc1 = new ProcessDescriptor(6, "Anciao Gandalf", AccessRole.WRITER);
+        AccessRequest desc1 = new AccessRequest(6, "Anciao Gandalf", MageAccessType.MAGICAL_RITUAL);
         DeadlockAgent agent1 = new DeadlockAgent(desc1, fireBook, iceBook, fireCoordinator, iceCoordinator, eventBus);
 
-        ProcessDescriptor desc2 = new ProcessDescriptor(7, "Anciao Dumbledore", AccessRole.WRITER);
+        AccessRequest desc2 = new AccessRequest(7, "Anciao Dumbledore", MageAccessType.MAGICAL_RITUAL);
         DeadlockAgent agent2 = new DeadlockAgent(desc2, iceBook, fireBook, iceCoordinator, fireCoordinator, eventBus);
 
         List<ArcaneAgent> agents = List.of(
@@ -124,15 +124,15 @@ public final class SimulationEngine {
         return new SimulationEngine(List.of(grimoire), List.of(coordinator), eventBus, agents);
     }
 
-    private static List<ProcessDescriptor> getStandardDescriptors() {
+    private static List<AccessRequest> getStandardDescriptors() {
         return List.of(
-                new ProcessDescriptor(1, "Mago Harry", AccessRole.COMMON_READER),
-                new ProcessDescriptor(2, "Maga Hermione", AccessRole.COMMON_READER),
-                new ProcessDescriptor(3, "Mago Ron", AccessRole.COMMON_READER),
-                new ProcessDescriptor(4, "Feiticeiro Voldemort", AccessRole.CRITICAL_READER),
-                new ProcessDescriptor(5, "Feiticeiro Sauron", AccessRole.CRITICAL_READER),
-                new ProcessDescriptor(6, "Anciao Gandalf", AccessRole.WRITER),
-                new ProcessDescriptor(7, "Anciao Dumbledore", AccessRole.WRITER));
+                new AccessRequest(1, "Mago Harry", MageAccessType.SIMPLE_CONSULTATION),
+                new AccessRequest(2, "Maga Hermione", MageAccessType.SIMPLE_CONSULTATION),
+                new AccessRequest(3, "Mago Ron", MageAccessType.SIMPLE_CONSULTATION),
+                new AccessRequest(4, "Feiticeiro Voldemort", MageAccessType.CRITICAL_RESEARCH),
+                new AccessRequest(5, "Feiticeiro Sauron", MageAccessType.CRITICAL_RESEARCH),
+                new AccessRequest(6, "Anciao Gandalf", MageAccessType.MAGICAL_RITUAL),
+                new AccessRequest(7, "Anciao Dumbledore", MageAccessType.MAGICAL_RITUAL));
     }
 
     public void start() {

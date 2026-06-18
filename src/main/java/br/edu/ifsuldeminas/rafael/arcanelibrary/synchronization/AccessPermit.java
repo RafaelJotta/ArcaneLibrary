@@ -1,14 +1,14 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.synchronization;
 
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessDescriptor;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRequest;
 
 public final class AccessPermit implements AutoCloseable {
     private final SyncCoordinator coordinator;
-    private final ProcessDescriptor process;
+    private final AccessRequest process;
     private final long waitedMillis;
     private boolean closed;
 
-    AccessPermit(SyncCoordinator coordinator, ProcessDescriptor process, long waitedMillis) {
+    AccessPermit(SyncCoordinator coordinator, AccessRequest process, long waitedMillis) {
         this.coordinator = coordinator;
         this.process = process;
         this.waitedMillis = waitedMillis;

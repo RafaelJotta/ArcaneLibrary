@@ -1,8 +1,8 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.simulation;
 
 import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.Grimoire;
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessDescriptor;
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessState;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRequest;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.MageState;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.EventBus;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.EventType;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.SimulationEvent;
@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 public abstract class ArcaneAgent implements Runnable {
-    private final ProcessDescriptor descriptor;
+    private final AccessRequest descriptor;
     private final List<Grimoire> grimoires;
     private final List<SyncCoordinator> coordinators;
     private final SimulationConfig config;
@@ -25,7 +25,7 @@ public abstract class ArcaneAgent implements Runnable {
     private Grimoire currentGrimoire;
     private SyncCoordinator currentCoordinator;
 
-    protected ArcaneAgent(ProcessDescriptor descriptor, List<Grimoire> grimoires,
+    protected ArcaneAgent(AccessRequest descriptor, List<Grimoire> grimoires,
                           List<SyncCoordinator> coordinators, SimulationConfig config, EventBus eventBus) {
         this.descriptor = descriptor;
         this.grimoires = grimoires;
@@ -45,7 +45,7 @@ public abstract class ArcaneAgent implements Runnable {
 
                 rest();
 
-                publish(EventType.WAITING, ProcessState.WAITING, "Solicitou acesso a: " + currentGrimoire.title());
+                publish(EventType.WAITING, MageState.WAITING, "Solicitou acesso a: " + currentGrimoire.title());
 
                 try (AccessPermit permit = currentCoordinator.acquire(descriptor)) {
                     metrics.registerAccess(permit.waitedMillis(), currentGrimoire.title());
@@ -60,10 +60,10 @@ public abstract class ArcaneAgent implements Runnable {
 
     public ProcessMetrics metrics() { return metrics.snapshot(); }
     protected final Grimoire grimoire() { return currentGrimoire; }
-    protected final ProcessDescriptor descriptor() { return descriptor; }
+    protected final AccessRequest descriptor() { return descriptor; }
     protected final SimulationConfig config() { return config; }
 
-    protected final void publish(EventType type, ProcessState state, String message) {
+    protected final void publish(EventType type, MageState state, String message) {
         eventBus.publish(SimulationEvent.now(type, descriptor, state, message, currentCoordinator.snapshot()));
     }
 
@@ -71,7 +71,7 @@ public abstract class ArcaneAgent implements Runnable {
     protected abstract void enterCriticalRegion();
 
     private void rest() throws InterruptedException {
-        publish(EventType.STATE, ProcessState.RESTING, "Descansando.");
+        publish(EventType.STATE, MageState.RESTING, "Descansando.");
         Thread.sleep(RandomDuration.between(config.minRest(), config.maxRest()).toMillis());
     }
 }

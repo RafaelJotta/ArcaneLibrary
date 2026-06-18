@@ -1,6 +1,6 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.simulation;
 
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessDescriptor;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRequest;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,14 +9,14 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public final class ProcessMetrics {
-    private final ProcessDescriptor process;
+    private final AccessRequest process;
     private final AtomicInteger accesses;
     private final AtomicLong totalWaitMillis;
     private final AtomicLong maxWaitMillis;
     // NOVO: Rastreador de acessos por livro
     private final ConcurrentHashMap<String, AtomicInteger> accessesByBook;
 
-    public ProcessMetrics(ProcessDescriptor process) {
+    public ProcessMetrics(AccessRequest process) {
         this.process = process;
         this.accesses = new AtomicInteger();
         this.totalWaitMillis = new AtomicLong();
@@ -24,7 +24,7 @@ public final class ProcessMetrics {
         this.accessesByBook = new ConcurrentHashMap<>();
     }
 
-    private ProcessMetrics(ProcessDescriptor process, int accesses, long totalWaitMillis, long maxWaitMillis, Map<String, Integer> accessesByBook) {
+    private ProcessMetrics(AccessRequest process, int accesses, long totalWaitMillis, long maxWaitMillis, Map<String, Integer> accessesByBook) {
         this.process = process;
         this.accesses = new AtomicInteger(accesses);
         this.totalWaitMillis = new AtomicLong(totalWaitMillis);
@@ -47,7 +47,7 @@ public final class ProcessMetrics {
         return new ProcessMetrics(process, accesses.get(), totalWaitMillis.get(), maxWaitMillis.get(), currentBooks);
     }
 
-    public ProcessDescriptor process() { return process; }
+    public AccessRequest process() { return process; }
     public int accesses() { return accesses.get(); }
     public long totalWaitMillis() { return totalWaitMillis.get(); }
     public long maxWaitMillis() { return maxWaitMillis.get(); }

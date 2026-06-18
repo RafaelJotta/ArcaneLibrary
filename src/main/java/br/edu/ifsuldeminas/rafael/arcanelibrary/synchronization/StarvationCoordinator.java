@@ -1,13 +1,13 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.synchronization;
 
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessDescriptor;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRequest;
 
 public final class StarvationCoordinator implements SyncCoordinator {
     private int activeReaders = 0;
     private boolean writerActive = false;
 
     @Override
-    public synchronized AccessPermit acquire(ProcessDescriptor process) throws InterruptedException {
+    public synchronized AccessPermit acquire(AccessRequest process) throws InterruptedException {
         long start = System.currentTimeMillis();
 
         if (process.role().isReader()) {
@@ -31,7 +31,7 @@ public final class StarvationCoordinator implements SyncCoordinator {
     }
 
     @Override
-    public synchronized void release(ProcessDescriptor process) {
+    public synchronized void release(AccessRequest process) {
         if (process.role().isReader()) {
             activeReaders--;
         } else {

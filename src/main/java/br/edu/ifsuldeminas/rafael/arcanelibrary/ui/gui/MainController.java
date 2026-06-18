@@ -1,7 +1,7 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.ui.gui;
 
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessDescriptor;
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessState;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRequest;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.MageState;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.EventBus;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.SimulationEvent;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.SimulationObserver;
@@ -49,7 +49,7 @@ public class MainController implements SimulationObserver {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
-    private record ProcessInfo(ProcessDescriptor process, ProcessState state) {}
+    private record ProcessInfo(AccessRequest process, MageState state) {}
 
     // Assets Visuais
     private Image imgLivro;
@@ -148,25 +148,26 @@ public class MainController implements SimulationObserver {
         });
     }
 
-    private void atualizarFilaVisual(ProcessDescriptor process, ProcessState state) {
+    private void atualizarFilaVisual(AccessRequest process, MageState state) {
         filaListView.getItems().removeIf(item -> item.contains(process.label()));
 
-        if (state == ProcessState.RESTING || state == ProcessState.STOPPED) return;
+        if (state == MageState.RESTING || state == MageState.STOPPED) return;
 
         String sigla = switch (process.role()) {
-            case COMMON_READER -> "[LR]";
-            case CRITICAL_READER -> "[LC]";
-            case WRITER -> "[ES]";
+            case SIMPLE_CONSULTATION -> "[CS]";
+            case CRITICAL_RESEARCH -> "[PC]";
+            case MAGICAL_RITUAL -> "[RM]";
+            case CRITICAL_RITUAL -> "[RC]";
         };
 
-        String status = state == ProcessState.WAITING ? "⏳ Aguardando" :
-                (state == ProcessState.WRITING ? "✍️ Escrevendo" : "📖 Lendo");
+        String status = state == MageState.WAITING ? "⏳ Aguardando" :
+                (state == MageState.WRITING ? "✍️ Escrevendo" : "📖 Lendo");
 
         filaListView.getItems().add(String.format("%s %s %s", status, sigla, process.label()));
     }
 
-    private void atualizarEstadoPalco(ProcessDescriptor process, ProcessState state, String message) {
-        if (state == ProcessState.READING || state == ProcessState.WRITING) {
+    private void atualizarEstadoPalco(AccessRequest process, MageState state, String message) {
+        if (state == MageState.READING || state == MageState.WRITING) {
             String nomeLivro = "Grimório Desconhecido";
             if (message.contains("'")) {
                 int start = message.indexOf("'") + 1;
@@ -276,9 +277,10 @@ public class MainController implements SimulationObserver {
         box.setAlignment(Pos.CENTER);
 
         Image imgSprite = switch (info.process().role()) {
-            case COMMON_READER -> imgMagoComum;
-            case CRITICAL_READER -> imgMagoCritico;
-            case WRITER -> imgMagoEscritor;
+            case SIMPLE_CONSULTATION -> imgMagoComum;
+            case CRITICAL_RESEARCH -> imgMagoCritico;
+            case MAGICAL_RITUAL -> imgMagoEscritor;
+            case CRITICAL_RITUAL -> imgMagoEscritor;
         };
 
         if (imgSprite != null) {
@@ -288,16 +290,17 @@ public class MainController implements SimulationObserver {
             view.setPreserveRatio(true);
 
             DropShadow glow = new DropShadow();
-            glow.setColor(info.state() == ProcessState.WRITING ? Color.RED : Color.CYAN);
+            glow.setColor(info.state() == MageState.WRITING ? Color.RED : Color.CYAN);
             glow.setRadius(10);
             view.setEffect(glow);
             box.getChildren().add(view);
         } else {
             Circle aura = new Circle(sizeImg / 3.0);
             aura.setFill(switch (info.process().role()) {
-                case COMMON_READER -> Color.web("#1e90ff");
-                case CRITICAL_READER -> Color.web("#9b59b6");
-                case WRITER -> Color.web("#e74c3c");
+                case SIMPLE_CONSULTATION -> Color.web("#1e90ff");
+                case CRITICAL_RESEARCH -> Color.web("#9b59b6");
+                case MAGICAL_RITUAL -> Color.web("#e74c3c");
+                case CRITICAL_RITUAL -> Color.web("#f1c40f");
             });
             box.getChildren().add(aura);
         }

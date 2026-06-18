@@ -1,7 +1,7 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.ui.console;
 
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRole;
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessDescriptor;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.MageAccessType;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRequest;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.EventType;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.SimulationEvent;
 
@@ -44,8 +44,7 @@ public final class ConsoleEventRenderer implements br.edu.ifsuldeminas.rafael.ar
                 snapshot
         );
     }
-
-    private String colorFor(EventType type, ProcessDescriptor process) {
+    private String colorFor(EventType type, AccessRequest process) {
         if (type == EventType.BLOCKED) {
             return Ansi.YELLOW;
         }
@@ -61,11 +60,15 @@ public final class ConsoleEventRenderer implements br.edu.ifsuldeminas.rafael.ar
         if (process == null) {
             return Ansi.GRAY;
         }
-        AccessRole role = process.role();
+
+        MageAccessType role = process.role();
+
         return switch (role) {
-            case COMMON_READER -> Ansi.BLUE;
-            case CRITICAL_READER -> Ansi.MAGENTA;
-            case WRITER -> Ansi.RED;
+            case SIMPLE_CONSULTATION -> Ansi.BLUE;
+            case CRITICAL_RESEARCH -> Ansi.MAGENTA;
+            case MAGICAL_RITUAL -> Ansi.RED;
+            case CRITICAL_RITUAL -> Ansi.YELLOW;
         };
     }
+
 }

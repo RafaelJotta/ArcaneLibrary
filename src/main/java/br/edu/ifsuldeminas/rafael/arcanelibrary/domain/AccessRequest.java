@@ -2,13 +2,15 @@ package br.edu.ifsuldeminas.rafael.arcanelibrary.domain;
 
 import java.util.Objects;
 
-public record ProcessDescriptor(int id, String name, AccessRole role) {
-    public ProcessDescriptor {
+public record AccessRequest(int id, String name, MageAccessType type) {
+
+    public AccessRequest {
         if (id <= 0) {
             throw new IllegalArgumentException("id must be positive");
         }
+
         Objects.requireNonNull(name, "name");
-        Objects.requireNonNull(role, "role");
+        Objects.requireNonNull(type, "type");
     }
 
     public String shortName() {
@@ -16,6 +18,10 @@ public record ProcessDescriptor(int id, String name, AccessRole role) {
     }
 
     public String label() {
-        return "[%s] %s".formatted(role.token(), shortName());
+        return "[%s] %s".formatted(type.token(), shortName());
+    }
+
+    public MageAccessType role() {
+        return type;
     }
 }

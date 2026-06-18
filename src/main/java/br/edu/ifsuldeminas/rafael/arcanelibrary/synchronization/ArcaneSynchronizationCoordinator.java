@@ -1,8 +1,8 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.synchronization;
 
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRole;
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessDescriptor;
-import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.ProcessState;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.MageAccessType;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRequest;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.MageState;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.EventBus;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.EventType;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.SimulationEvent;
@@ -38,14 +38,14 @@ public final class ArcaneSynchronizationCoordinator implements SyncCoordinator {
     }
 
     @Override
-    public AccessPermit acquire(ProcessDescriptor process) throws InterruptedException {
+    public AccessPermit acquire(AccessRequest process) throws InterruptedException {
         long startedAt = System.nanoTime();
         policyMutex.lockInterruptibly();
         boolean waitingRegistered = false;
         try {
             registerWaiting(process.role());
             waitingRegistered = true;
-            publish(EventType.WAITING, process, ProcessState.WAITING, "Entrou na fila.");
+            publish(EventType.WAITING, process, MageState.WAITING, "Entrou na fila.");
 
             while (!canEnter(process.role())) {
                 stateChanged.await();
@@ -63,7 +63,7 @@ public final class ArcaneSynchronizationCoordinator implements SyncCoordinator {
     }
 
     @Override
-    public void release(ProcessDescriptor process) {
+    public void release(AccessRequest process) {
         policyMutex.lock();
         try {
             if (process.role().isReader()) {
@@ -83,42 +83,42 @@ public final class ArcaneSynchronizationCoordinator implements SyncCoordinator {
         }
     }
 
-    private boolean canEnter(AccessRole role) {
+    private boolean canEnter(MageAccessType role) {
         if (writerActive) return false;
         return switch (role) {
-            case COMMON_READER -> waitingWriters == 0 || commonReaderBatchQuota > 0;
-            case CRITICAL_READER -> !(waitingWriters > 0 && criticalVipBurst >= maxCriticalVipBurst);
-            case WRITER -> activeReaders == 0 && commonReaderBatchQuota == 0 &&
+            case SIMPLE_CONSULTATION -> waitingWriters == 0 || commonReaderBatchQuota > 0;
+            case CRITICAL_RESEARCH -> !(waitingWriters > 0 && criticalVipBurst >= maxCriticalVipBurst);
+            case MAGICAL_RITUAL, CRITICAL_RITUAL -> activeReaders == 0 && commonReaderBatchQuota == 0 &&
                     (waitingCriticalReaders == 0 || (waitingWriters > 0 && criticalVipBurst >= maxCriticalVipBurst));
         };
     }
 
-    private void reserveCriticalRegion(ProcessDescriptor process) {
-        AccessRole role = process.role();
+    private void reserveCriticalRegion(AccessRequest process) {
+        MageAccessType role = process.role();
         if (role.isReader()) {
             if (activeReaders == 0) criticalRegionGate.acquireUninterruptibly();
             activeReaders += 1;
-            if (role == AccessRole.COMMON_READER && commonReaderBatchQuota > 0) commonReaderBatchQuota -= 1;
-            if (role == AccessRole.CRITICAL_READER && waitingWriters > 0) criticalVipBurst += 1;
+            if (role == MageAccessType.SIMPLE_CONSULTATION && commonReaderBatchQuota > 0) commonReaderBatchQuota -= 1;
+            if (role == MageAccessType.CRITICAL_RESEARCH && waitingWriters > 0) criticalVipBurst += 1;
         } else {
             criticalRegionGate.acquireUninterruptibly();
             writerActive = true;
         }
     }
 
-    private void registerWaiting(AccessRole role) {
+    private void registerWaiting(MageAccessType role) {
         switch (role) {
-            case COMMON_READER -> waitingCommonReaders += 1;
-            case CRITICAL_READER -> waitingCriticalReaders += 1;
-            case WRITER -> waitingWriters += 1;
+            case SIMPLE_CONSULTATION -> waitingCommonReaders += 1;
+            case CRITICAL_RESEARCH -> waitingCriticalReaders += 1;
+            case MAGICAL_RITUAL, CRITICAL_RITUAL -> waitingWriters += 1;
         }
     }
 
-    private void unregisterWaiting(AccessRole role) {
+    private void unregisterWaiting(MageAccessType role) {
         switch (role) {
-            case COMMON_READER -> waitingCommonReaders -= 1;
-            case CRITICAL_READER -> waitingCriticalReaders -= 1;
-            case WRITER -> waitingWriters -= 1;
+            case SIMPLE_CONSULTATION -> waitingCommonReaders -= 1;
+            case CRITICAL_RESEARCH -> waitingCriticalReaders -= 1;
+            case MAGICAL_RITUAL, CRITICAL_RITUAL -> waitingWriters -= 1;
         }
     }
 
@@ -129,7 +129,7 @@ public final class ArcaneSynchronizationCoordinator implements SyncCoordinator {
                 maxCriticalVipBurst, completedReads, completedWrites);
     }
 
-    private void publish(EventType type, ProcessDescriptor process, ProcessState state, String message) {
+    private void publish(EventType type, AccessRequest process, MageState state, String message) {
         eventBus.publish(SimulationEvent.now(type, process, state, message, snapshot()));
     }
 }
