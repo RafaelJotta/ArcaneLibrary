@@ -15,5 +15,7 @@ public final class CriticalReaderAgent extends ArcaneAgent {
         super(d, g, c, conf, eb);
     }
     @Override protected Duration activityDuration() { return RandomDuration.between(config().minCriticalRead(), config().maxCriticalRead()); }
-    @Override protected void enterCriticalRegion() { publish(EventType.STATE, MageState.READING, grimoire().read(descriptor())); }
+    @Override protected void enterCriticalRegion() {
+        publish(EventType.STATE, MageState.READING, grimoire().criticalRead(descriptor()));
+    }
 }
