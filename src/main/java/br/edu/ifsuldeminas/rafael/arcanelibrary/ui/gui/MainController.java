@@ -37,13 +37,17 @@ import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.Box;
 import javafx.scene.shape.Cylinder;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Sphere;
 import javafx.scene.transform.Rotate;
 import javafx.util.Duration;
 
+import java.net.URL;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class MainController implements SimulationObserver {
@@ -74,7 +78,6 @@ public class MainController implements SimulationObserver {
     private EventBus eventBus;
     private SimulationConfig config;
 
-    private Group activeTablesLayer;
     private Group activeBooksLayer;
     private Group activeAgentsLayer;
 
@@ -111,6 +114,7 @@ public class MainController implements SimulationObserver {
         btnParar.setOnAction(event -> pararSimulacao());
 
         aplicarEstiloBotaoIniciarNormal();
+
         montarPortal3D();
         montarBiblioteca3D();
         prepararEstadoInicial();
@@ -424,6 +428,8 @@ public class MainController implements SimulationObserver {
             for (Map<String, ProcessInfo> magosNoLivro : mesasDeLivros.values()) {
                 magosNoLivro.remove(process.label());
             }
+
+            mesasDeLivros.entrySet().removeIf(entry -> entry.getValue().isEmpty());
         }
 
         atualizarCenaBiblioteca3D();
@@ -504,66 +510,71 @@ public class MainController implements SimulationObserver {
     private void montarBiblioteca3D() {
         Group libraryWorld = new Group();
 
-        activeTablesLayer = new Group();
         activeBooksLayer = new Group();
         activeAgentsLayer = new Group();
 
-        AmbientLight ambient = new AmbientLight(Color.web("#94a3b8"));
+        AmbientLight ambient = new AmbientLight(Color.web("#cbd5e1"));
 
         PointLight mainLight = new PointLight(Color.web("#eab308"));
-        mainLight.setTranslateX(-260);
-        mainLight.setTranslateY(-260);
-        mainLight.setTranslateZ(-260);
+        mainLight.setTranslateX(-180);
+        mainLight.setTranslateY(-220);
+        mainLight.setTranslateZ(-220);
 
         PointLight blueLight = new PointLight(Color.web("#22d3ee"));
-        blueLight.setTranslateX(280);
-        blueLight.setTranslateY(-190);
-        blueLight.setTranslateZ(-180);
-
-        Group ambiente = criarAmbienteBiblioteca3D();
-
-        Group livroCentral = criarLivro3D(0.95);
-        livroCentral.setTranslateY(35);
-        livroCentral.setTranslateZ(25);
-
-        RotateTransition libraryBookRotation = new RotateTransition(Duration.seconds(14), livroCentral);
-        libraryBookRotation.setAxis(Rotate.Y_AXIS);
-        libraryBookRotation.setByAngle(360);
-        libraryBookRotation.setCycleCount(Animation.INDEFINITE);
-        libraryBookRotation.play();
-
-        Group anelEnergia = criarAnelDeEsferas(145, 34, 3.5, Color.web("#22d3ee"));
-        anelEnergia.setTranslateY(45);
-        anelEnergia.setTranslateZ(25);
-        anelEnergia.getTransforms().add(new Rotate(90, Rotate.X_AXIS));
-
-        RotateTransition anelTransition = new RotateTransition(Duration.seconds(10), anelEnergia);
-        anelTransition.setAxis(Rotate.Y_AXIS);
-        anelTransition.setByAngle(360);
-        anelTransition.setCycleCount(Animation.INDEFINITE);
-        anelTransition.play();
+        blueLight.setTranslateX(220);
+        blueLight.setTranslateY(-180);
+        blueLight.setTranslateZ(-190);
 
         libraryWorld.getChildren().addAll(
-                ambiente,
-                activeTablesLayer,
                 ambient,
                 mainLight,
                 blueLight,
-                anelEnergia,
-                livroCentral,
                 activeBooksLayer,
                 activeAgentsLayer
         );
 
-        libraryWorld.getTransforms().add(new Rotate(-13, Rotate.X_AXIS));
+        libraryWorld.getTransforms().add(new Rotate(-10, Rotate.X_AXIS));
 
-        SubScene subScene = criarSubScene(libraryWorld, libraryViewport, -980);
-        libraryViewport.getChildren().setAll(subScene);
+        SubScene subScene = criarSubScene(libraryWorld, libraryViewport, -820);
+
+        aplicarFundoBibliotecaComoCss();
+
+        Rectangle escurecerFundo = new Rectangle();
+        escurecerFundo.widthProperty().bind(libraryViewport.widthProperty());
+        escurecerFundo.heightProperty().bind(libraryViewport.heightProperty());
+        escurecerFundo.setFill(Color.web("#020617", 0.08));
+        escurecerFundo.setMouseTransparent(true);
+
+        libraryViewport.getChildren().setAll(
+                escurecerFundo,
+                subScene
+        );
+    }
+
+    private void aplicarFundoBibliotecaComoCss() {
+        URL imageUrl = getClass().getResource(
+                "/br/edu/ifsuldeminas/rafael/arcanelibrary/ui/gui/assets/biblioteca_arcana_fundo.png"
+        );
+
+        if (imageUrl != null) {
+            libraryViewport.setStyle(
+                    "-fx-background-color: #020617;" +
+                            "-fx-background-image: url(\"" + imageUrl.toExternalForm() + "\");" +
+                            "-fx-background-size: cover;" +
+                            "-fx-background-position: center center;" +
+                            "-fx-background-repeat: no-repeat;"
+            );
+        } else {
+            libraryViewport.setStyle(
+                    "-fx-background-color: radial-gradient(center 50% 45%, radius 80%, #1e293b 0%, #0f172a 45%, #020617 100%);"
+            );
+        }
     }
 
     private SubScene criarSubScene(Group world, StackPane container, double cameraZ) {
         SubScene subScene = new SubScene(world, 900, 650, true, SceneAntialiasing.BALANCED);
         subScene.setFill(Color.TRANSPARENT);
+        subScene.setMouseTransparent(true);
 
         PerspectiveCamera camera = new PerspectiveCamera(true);
         camera.setTranslateZ(cameraZ);
@@ -577,108 +588,6 @@ public class MainController implements SimulationObserver {
         subScene.heightProperty().bind(container.heightProperty());
 
         return subScene;
-    }
-
-    private Group criarAmbienteBiblioteca3D() {
-        Group ambiente = new Group();
-
-        PhongMaterial floorMat = material("#0b1120");
-        PhongMaterial borderMat = material("#1e293b");
-        PhongMaterial magicMat = material("#0f172a");
-
-        Box floor = new Box(950, 18, 680);
-        floor.setTranslateY(170);
-        floor.setTranslateZ(80);
-        floor.setMaterial(floorMat);
-
-        Box backPanel = new Box(920, 260, 16);
-        backPanel.setTranslateY(25);
-        backPanel.setTranslateZ(390);
-        backPanel.setMaterial(magicMat);
-
-        Box leftColumn = new Box(24, 230, 24);
-        leftColumn.setTranslateX(-430);
-        leftColumn.setTranslateY(45);
-        leftColumn.setTranslateZ(250);
-        leftColumn.setMaterial(borderMat);
-
-        Box rightColumn = new Box(24, 230, 24);
-        rightColumn.setTranslateX(430);
-        rightColumn.setTranslateY(45);
-        rightColumn.setTranslateZ(250);
-        rightColumn.setMaterial(borderMat);
-
-        Box floorLine = new Box(760, 4, 8);
-        floorLine.setTranslateY(158);
-        floorLine.setTranslateZ(-180);
-        floorLine.setMaterial(borderMat);
-
-        ambiente.getChildren().addAll(
-                floor,
-                backPanel,
-                leftColumn,
-                rightColumn,
-                floorLine
-        );
-
-        return ambiente;
-    }
-
-    private Group criarMesa3D(double escala) {
-        Group mesa = new Group();
-
-        PhongMaterial tableMat = material("#5c3b25");
-        PhongMaterial tableDarkMat = material("#2f1b12");
-
-        Cylinder tableTop = new Cylinder(155 * escala, 18 * escala);
-        tableTop.setTranslateY(85 * escala);
-        tableTop.setMaterial(tableMat);
-
-        Cylinder tableBase = new Cylinder(42 * escala, 115 * escala);
-        tableBase.setTranslateY(145 * escala);
-        tableBase.setMaterial(tableDarkMat);
-
-        Cylinder tableFoot = new Cylinder(80 * escala, 12 * escala);
-        tableFoot.setTranslateY(205 * escala);
-        tableFoot.setMaterial(tableDarkMat);
-
-        mesa.getChildren().addAll(tableTop, tableBase, tableFoot);
-
-        return mesa;
-    }
-
-    private void desenharMesasDaCena(int qtdLivros) {
-        if (activeTablesLayer == null) {
-            return;
-        }
-
-        activeTablesLayer.getChildren().clear();
-
-        if (qtdLivros <= 1) {
-            Group mesaCentral = criarMesa3D(1.0);
-            mesaCentral.setTranslateX(0);
-            mesaCentral.setTranslateZ(0);
-            activeTablesLayer.getChildren().add(mesaCentral);
-            return;
-        }
-
-        Group mesaCentro = criarMesa3D(0.82);
-        mesaCentro.setTranslateX(0);
-        mesaCentro.setTranslateZ(0);
-
-        Group mesaEsquerda = criarMesa3D(0.68);
-        mesaEsquerda.setTranslateX(-285);
-        mesaEsquerda.setTranslateZ(45);
-
-        Group mesaDireita = criarMesa3D(0.68);
-        mesaDireita.setTranslateX(285);
-        mesaDireita.setTranslateZ(45);
-
-        activeTablesLayer.getChildren().addAll(
-                mesaEsquerda,
-                mesaCentro,
-                mesaDireita
-        );
     }
 
     private Group criarLivro3D(double escala) {
@@ -707,6 +616,41 @@ public class MainController implements SimulationObserver {
 
         book.getChildren().addAll(cover, pages, spine, goldLine, gem);
         return book;
+    }
+
+    private Group criarLivroFlutuante3D(double escala) {
+        Group livroCentral = criarLivro3D(escala);
+        livroCentral.setTranslateY(0);
+        livroCentral.setTranslateZ(0);
+
+        RotateTransition giroLivro = new RotateTransition(Duration.seconds(8), livroCentral);
+        giroLivro.setAxis(Rotate.Y_AXIS);
+        giroLivro.setByAngle(360);
+        giroLivro.setCycleCount(Animation.INDEFINITE);
+        giroLivro.play();
+
+        Group anelEnergia = criarAnelDeEsferas(95 * escala, 30, 3.2 * escala, Color.web("#22d3ee"));
+        anelEnergia.setTranslateY(18 * escala);
+        anelEnergia.setTranslateZ(0);
+        anelEnergia.getTransforms().add(new Rotate(90, Rotate.X_AXIS));
+
+        RotateTransition giroAnel = new RotateTransition(Duration.seconds(7), anelEnergia);
+        giroAnel.setAxis(Rotate.Y_AXIS);
+        giroAnel.setByAngle(360);
+        giroAnel.setCycleCount(Animation.INDEFINITE);
+        giroAnel.play();
+
+        Group livroFlutuante = new Group();
+        livroFlutuante.getChildren().addAll(anelEnergia, livroCentral);
+
+        TranslateTransition flutuarLivro = new TranslateTransition(Duration.seconds(2.2), livroFlutuante);
+        flutuarLivro.setFromY(-35);
+        flutuarLivro.setToY(-12);
+        flutuarLivro.setAutoReverse(true);
+        flutuarLivro.setCycleCount(Animation.INDEFINITE);
+        flutuarLivro.play();
+
+        return livroFlutuante;
     }
 
     private Group criarMago3D(AccessRequest process, MageState state, double escala) {
@@ -757,7 +701,7 @@ public class MainController implements SimulationObserver {
     }
 
     private void atualizarCenaBiblioteca3D() {
-        if (activeBooksLayer == null || activeAgentsLayer == null || activeTablesLayer == null) {
+        if (activeBooksLayer == null || activeAgentsLayer == null) {
             return;
         }
 
@@ -766,10 +710,15 @@ public class MainController implements SimulationObserver {
 
         int qtdLivros = mesasDeLivros.size();
 
-        desenharMesasDaCena(qtdLivros);
-
         if (qtdLivros == 0) {
-            lblSceneInfo.setText("Biblioteca 3D aguardando simulação");
+            Group livroIdle = criarLivroFlutuante3D(1.05);
+            livroIdle.setTranslateX(0);
+            livroIdle.setTranslateY(15);
+            livroIdle.setTranslateZ(0);
+
+            activeBooksLayer.getChildren().add(livroIdle);
+
+            lblSceneInfo.setText("Livro arcano flutuando aguardando agentes");
             return;
         }
 
@@ -778,57 +727,101 @@ public class MainController implements SimulationObserver {
                 .mapToInt(Map::size)
                 .sum();
 
-        int visualizados = 0;
+        int livroIndex = 0;
+        int totalVisualizados = 0;
         int limiteTotal = 48;
-        int i = 0;
 
-        for (Map.Entry<String, Map<String, ProcessInfo>> mesa : mesasDeLivros.entrySet()) {
-            Map<String, ProcessInfo> magos = mesa.getValue();
+        for (Map.Entry<String, Map<String, ProcessInfo>> entradaLivro : mesasDeLivros.entrySet()) {
+            Map<String, ProcessInfo> agentesDoLivro = entradaLivro.getValue();
 
-            double bookX = qtdLivros == 1
-                    ? 0
-                    : -260 + (520.0 * i / Math.max(qtdLivros - 1, 1));
+            double bookX;
+            double bookY;
+            double bookZ;
+            double escalaLivro;
+            double raioMagos;
+            double escalaMago;
 
-            double bookZ = qtdLivros == 1
-                    ? -35
-                    : 20 + 35 * Math.sin(i);
+            if (qtdLivros == 1) {
+                bookX = 0;
+                bookY = 15;
+                bookZ = 0;
+                escalaLivro = 1.05;
+                raioMagos = 205;
+                escalaMago = 1.0;
+            } else if (qtdLivros == 2) {
+                bookX = livroIndex == 0 ? -190 : 190;
+                bookY = 25;
+                bookZ = 10;
+                escalaLivro = 0.82;
+                raioMagos = 115;
+                escalaMago = 0.76;
+            } else {
+                if (livroIndex == 0) {
+                    bookX = -245;
+                    bookZ = 35;
+                } else if (livroIndex == 1) {
+                    bookX = 0;
+                    bookZ = -25;
+                } else if (livroIndex == 2) {
+                    bookX = 245;
+                    bookZ = 35;
+                } else {
+                    double angleBook = 2 * Math.PI * livroIndex / qtdLivros;
+                    bookX = 255 * Math.cos(angleBook);
+                    bookZ = 35 + 120 * Math.sin(angleBook);
+                }
 
-            Group bookMini = criarLivro3D(0.45);
-            bookMini.setTranslateX(bookX);
-            bookMini.setTranslateY(40);
-            bookMini.setTranslateZ(bookZ);
-            activeBooksLayer.getChildren().add(bookMini);
+                bookY = 30;
+                escalaLivro = 0.66;
+                raioMagos = 90;
+                escalaMago = 0.62;
+            }
 
-            int limitePorLivro = Math.max(6, limiteTotal / Math.max(qtdLivros, 1));
-            int idx = 0;
+            Group livroVisual = criarLivroFlutuante3D(escalaLivro);
+            livroVisual.setTranslateX(bookX);
+            livroVisual.setTranslateY(bookY);
+            livroVisual.setTranslateZ(bookZ);
 
-            for (ProcessInfo info : magos.values()) {
-                if (visualizados >= limiteTotal || idx >= limitePorLivro) {
+            activeBooksLayer.getChildren().add(livroVisual);
+
+            List<ProcessInfo> agentesAtivos = new ArrayList<>(agentesDoLivro.values());
+
+            int limitePorLivro = Math.min(
+                    agentesAtivos.size(),
+                    Math.max(4, limiteTotal / Math.max(qtdLivros, 1))
+            );
+
+            for (int i = 0; i < limitePorLivro; i++) {
+                if (totalVisualizados >= limiteTotal) {
                     break;
                 }
 
-                double angle = 2 * Math.PI * idx / Math.max(Math.min(magos.size(), limitePorLivro), 1);
-                double radius = qtdLivros == 1 ? 190 : 105;
+                ProcessInfo info = agentesAtivos.get(i);
 
-                Group mage = criarMago3D(info.process(), info.state(), qtdLivros == 1 ? 1.0 : 0.82);
+                double angle = 2 * Math.PI * i / Math.max(limitePorLivro, 1);
 
-                mage.setTranslateX(bookX + radius * Math.cos(angle));
-                mage.setTranslateY(88);
-                mage.setTranslateZ(bookZ + radius * Math.sin(angle));
+                double x = bookX + raioMagos * Math.cos(angle);
+                double z = bookZ - 20 + raioMagos * Math.sin(angle);
+
+                Group mage = criarMago3D(info.process(), info.state(), escalaMago);
+
+                mage.setTranslateX(x);
+                mage.setTranslateY(95);
+                mage.setTranslateZ(z);
 
                 activeAgentsLayer.getChildren().add(mage);
-
-                idx++;
-                visualizados++;
+                totalVisualizados++;
             }
 
-            i++;
+            livroIndex++;
         }
 
-        if (totalAtivos > visualizados) {
-            lblSceneInfo.setText("Mostrando " + visualizados + " de " + totalAtivos + " agentes ativos em 3D");
+        if (totalAtivos > totalVisualizados) {
+            lblSceneInfo.setText("Mostrando " + totalVisualizados + " de " + totalAtivos + " agentes entre " + qtdLivros + " grimórios");
+        } else if (qtdLivros == 1) {
+            lblSceneInfo.setText(totalAtivos + " agente(s) ao redor do livro arcano");
         } else {
-            lblSceneInfo.setText(totalAtivos + " agente(s) ativo(s) na biblioteca 3D");
+            lblSceneInfo.setText(totalAtivos + " agente(s) distribuído(s) entre " + qtdLivros + " grimórios");
         }
     }
 
