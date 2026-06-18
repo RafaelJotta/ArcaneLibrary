@@ -7,58 +7,351 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.shape.Circle?>
-<?import javafx.scene.text.Font?>
 
-<BorderPane prefHeight="850.0" prefWidth="1350.0" style="-fx-background-color: #0b0b10;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="br.edu.ifsuldeminas.rafael.arcanelibrary.ui.gui.MainController">
+<StackPane fx:id="appRoot"
+           prefWidth="1120.0"
+           prefHeight="690.0"
+           minWidth="1120.0"
+           minHeight="690.0"
+           maxWidth="1120.0"
+           maxHeight="690.0"
+           style="-fx-background-color: #020617;"
+           xmlns="http://javafx.com/javafx/17"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="br.edu.ifsuldeminas.rafael.arcanelibrary.ui.gui.MainController">
 
-    <left>
-        <VBox prefWidth="280.0" spacing="10.0" style="-fx-background-color: #161620; -fx-padding: 15; -fx-border-color: #2f3542; -fx-border-width: 0 1 0 0;">
-            <Label style="-fx-text-fill: #d4af37; -fx-font-weight: bold; -fx-font-size: 14px;" text="FILA DE SOLICITAÇÕES" />
-            <ListView fx:id="filaListView" style="-fx-background-color: transparent; -fx-control-inner-background: #161620;" VBox.vgrow="ALWAYS" />
-        </VBox>
-    </left>
+    <BorderPane fx:id="dashboardRoot"
+                prefWidth="1120.0"
+                prefHeight="690.0"
+                style="-fx-background-color: #020617;">
 
-    <center>
-        <StackPane style="-fx-background-color: radial-gradient(center 50% 50%, radius 60%, #1e1e2e 0%, #0b0b10 100%);">
-            <Pane fx:id="palcoAnimacaoPane" />
-        </StackPane>
-    </center>
+        <top>
+            <HBox alignment="CENTER_LEFT"
+                  spacing="8"
+                  prefHeight="50"
+                  minHeight="50"
+                  maxHeight="50"
+                  style="-fx-background-color: #0f172a;
+                         -fx-padding: 8 12 8 12;
+                         -fx-border-color: #334155;
+                         -fx-border-width: 0 0 1 0;">
 
-    <right>
-        <VBox prefWidth="340.0" spacing="15.0" style="-fx-background-color: #161620; -fx-padding: 15; -fx-border-color: #2f3542; -fx-border-width: 0 0 0 1;">
+                <Button fx:id="btnVoltarInicio"
+                        text="⟵ Portal"
+                        visible="false"
+                        managed="false"
+                        prefWidth="82"
+                        prefHeight="32"
+                        style="-fx-background-color: #1e293b;
+                               -fx-text-fill: #eab308;
+                               -fx-font-size: 11px;
+                               -fx-font-weight: bold;
+                               -fx-background-radius: 12;
+                               -fx-border-color: #eab30888;
+                               -fx-border-radius: 12;
+                               -fx-cursor: hand;" />
 
-            <Label style="-fx-text-fill: #d4af37; -fx-font-weight: bold; -fx-font-size: 14px;" text="CONTROLES DA SIMULAÇÃO" />
+                <VBox spacing="0" prefWidth="165">
+                    <Label text="ARCANELIBRARY"
+                           style="-fx-text-fill: #eab308;
+                                  -fx-font-size: 17px;
+                                  -fx-font-weight: bold;" />
+                    <Label text="Biblioteca 3D"
+                           style="-fx-text-fill: #94a3b8;
+                                  -fx-font-size: 10px;" />
+                </VBox>
 
-            <VBox spacing="5.0">
-                <Label style="-fx-text-fill: #a4b0be;" text="Política / Cenário:" />
-                <ComboBox fx:id="cenarioComboBox" prefWidth="310.0" style="-fx-background-color: #2f3542; -fx-text-fill: white;" />
-            </VBox>
+                <Region HBox.hgrow="ALWAYS" />
 
-            <HBox spacing="10.0">
-                <Button fx:id="btnIniciar" prefWidth="150.0" style="-fx-background-color: #2ecc71; -fx-text-fill: #000000; -fx-font-weight: bold;" text="Iniciar" />
-                <Button fx:id="btnParar" prefWidth="150.0" style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold;" text="Pausar / Resetar" />
+                <Label text="Cenário"
+                       style="-fx-text-fill: #cbd5e1;
+                              -fx-font-size: 11px;" />
+
+                <ComboBox fx:id="cenarioComboBox"
+                          prefWidth="235"
+                          minWidth="235"
+                          maxWidth="235"
+                          style="-fx-background-color: #1e293b;
+                                 -fx-text-fill: white;
+                                 -fx-background-radius: 8;" />
+
+                <Button fx:id="btnIniciar"
+                        text="▶"
+                        prefWidth="40"
+                        minWidth="40"
+                        maxWidth="40"
+                        prefHeight="32"
+                        style="-fx-background-color: #22c55e;
+                               -fx-text-fill: #052e16;
+                               -fx-font-size: 13px;
+                               -fx-font-weight: bold;
+                               -fx-background-radius: 8;
+                               -fx-cursor: hand;" />
+
+                <Button fx:id="btnParar"
+                        text="■"
+                        prefWidth="40"
+                        minWidth="40"
+                        maxWidth="40"
+                        prefHeight="32"
+                        style="-fx-background-color: #ef4444;
+                               -fx-text-fill: white;
+                               -fx-font-size: 12px;
+                               -fx-font-weight: bold;
+                               -fx-background-radius: 8;
+                               -fx-cursor: hand;" />
             </HBox>
+        </top>
 
-            <Separator style="-fx-background-color: #2f3542;" />
+        <left>
+            <VBox prefWidth="235"
+                  minWidth="235"
+                  maxWidth="235"
+                  spacing="10"
+                  style="-fx-background-color: #0b1120;
+                         -fx-padding: 12;
+                         -fx-border-color: #1e293b;
+                         -fx-border-width: 0 1 0 0;">
 
-            <Label style="-fx-text-fill: #d4af37; -fx-font-weight: bold; -fx-font-size: 14px;" text="STATUS DO SISTEMA" />
+                <Label text="CONFIGURAÇÃO"
+                       style="-fx-text-fill: #eab308;
+                              -fx-font-size: 12px;
+                              -fx-font-weight: bold;" />
 
-            <VBox fx:id="metricasVBox" spacing="15.0" VBox.vgrow="ALWAYS" />
+                <GridPane hgap="8" vgap="8">
+                    <columnConstraints>
+                        <ColumnConstraints percentWidth="62" />
+                        <ColumnConstraints percentWidth="38" />
+                    </columnConstraints>
 
+                    <Label text="Consultas"
+                           GridPane.rowIndex="0"
+                           GridPane.columnIndex="0"
+                           style="-fx-text-fill: #e5e7eb; -fx-font-size: 11px;" />
+                    <TextField fx:id="txtSimpleReaders"
+                               text="3"
+                               GridPane.rowIndex="0"
+                               GridPane.columnIndex="1"
+                               style="-fx-background-color: #020617;
+                                      -fx-text-fill: #22d3ee;
+                                      -fx-border-color: #155e75;
+                                      -fx-border-radius: 7;
+                                      -fx-background-radius: 7;" />
+
+                    <Label text="Pesquisas"
+                           GridPane.rowIndex="1"
+                           GridPane.columnIndex="0"
+                           style="-fx-text-fill: #e5e7eb; -fx-font-size: 11px;" />
+                    <TextField fx:id="txtCriticalReaders"
+                               text="2"
+                               GridPane.rowIndex="1"
+                               GridPane.columnIndex="1"
+                               style="-fx-background-color: #020617;
+                                      -fx-text-fill: #a855f7;
+                                      -fx-border-color: #6d28d9;
+                                      -fx-border-radius: 7;
+                                      -fx-background-radius: 7;" />
+
+                    <Label text="Rituais"
+                           GridPane.rowIndex="2"
+                           GridPane.columnIndex="0"
+                           style="-fx-text-fill: #e5e7eb; -fx-font-size: 11px;" />
+                    <TextField fx:id="txtWriters"
+                               text="2"
+                               GridPane.rowIndex="2"
+                               GridPane.columnIndex="1"
+                               style="-fx-background-color: #020617;
+                                      -fx-text-fill: #ef4444;
+                                      -fx-border-color: #991b1b;
+                                      -fx-border-radius: 7;
+                                      -fx-background-radius: 7;" />
+
+                    <Label text="Rituais críticos"
+                           GridPane.rowIndex="3"
+                           GridPane.columnIndex="0"
+                           style="-fx-text-fill: #e5e7eb; -fx-font-size: 11px;" />
+                    <TextField fx:id="txtCriticalWriters"
+                               text="1"
+                               GridPane.rowIndex="3"
+                               GridPane.columnIndex="1"
+                               style="-fx-background-color: #020617;
+                                      -fx-text-fill: #eab308;
+                                      -fx-border-color: #a16207;
+                                      -fx-border-radius: 7;
+                                      -fx-background-radius: 7;" />
+                </GridPane>
+
+                <Separator />
+
+                <Label text="FILA DE ACESSO"
+                       style="-fx-text-fill: #eab308;
+                              -fx-font-size: 12px;
+                              -fx-font-weight: bold;" />
+
+                <ListView fx:id="filaListView"
+                          prefHeight="420"
+                          style="-fx-background-color: transparent;
+                                 -fx-control-inner-background: #020617;
+                                 -fx-text-fill: white;
+                                 -fx-border-color: #334155;
+                                 -fx-border-radius: 8;" />
+            </VBox>
+        </left>
+
+        <center>
+            <VBox prefWidth="610"
+                  minWidth="610"
+                  maxWidth="610"
+                  spacing="0"
+                  style="-fx-background-color: #020617;">
+
+                <StackPane prefHeight="500"
+                           minHeight="500"
+                           maxHeight="500"
+                           style="-fx-background-color: linear-gradient(to bottom, #020617, #111827, #020617);
+                                  -fx-border-color: #1e293b;
+                                  -fx-border-width: 0 1 1 0;">
+
+                    <StackPane fx:id="libraryViewport"
+                               prefWidth="610"
+                               prefHeight="500" />
+
+                    <Label fx:id="lblSceneInfo"
+                           StackPane.alignment="BOTTOM_CENTER"
+                           text="Biblioteca 3D aguardando simulação"
+                           style="-fx-background-color: #020617cc;
+                                  -fx-text-fill: #cbd5e1;
+                                  -fx-padding: 7 14 7 14;
+                                  -fx-background-radius: 18;
+                                  -fx-font-size: 11px;">
+                        <StackPane.margin>
+                            <Insets bottom="12" />
+                        </StackPane.margin>
+                    </Label>
+                </StackPane>
+
+                <VBox prefHeight="140"
+                      minHeight="140"
+                      maxHeight="140"
+                      style="-fx-background-color: #020617;
+                             -fx-padding: 7 10 8 10;
+                             -fx-border-color: #1e293b;
+                             -fx-border-width: 1 1 0 0;">
+
+                    <HBox alignment="CENTER_LEFT" prefHeight="18">
+                        <Label text="LOG DE EVENTOS"
+                               style="-fx-text-fill: #eab308;
+                                      -fx-font-size: 11px;
+                                      -fx-font-weight: bold;" />
+
+                        <Region HBox.hgrow="ALWAYS" />
+
+                        <Label text="tempo real"
+                               style="-fx-text-fill: #64748b;
+                                      -fx-font-size: 10px;" />
+                    </HBox>
+
+                    <TextArea fx:id="logTextArea"
+                              editable="false"
+                              prefHeight="110"
+                              style="-fx-font-family: monospace;
+                                     -fx-control-inner-background: #000000;
+                                     -fx-text-fill: #94a3b8;
+                                     -fx-border-color: #334155;
+                                     -fx-border-width: 1;" />
+                </VBox>
+            </VBox>
+        </center>
+
+        <right>
+            <VBox prefWidth="275"
+                  minWidth="275"
+                  maxWidth="275"
+                  spacing="10"
+                  style="-fx-background-color: #0b1120;
+                         -fx-padding: 12;
+                         -fx-border-color: #1e293b;
+                         -fx-border-width: 0 0 0 1;">
+
+                <Label text="MÉTRICAS"
+                       style="-fx-text-fill: #eab308;
+                              -fx-font-size: 12px;
+                              -fx-font-weight: bold;" />
+
+                <VBox fx:id="metricasVBox"
+                      spacing="9"
+                      prefHeight="430" />
+
+                <Separator />
+
+                <Label text="LEGENDA"
+                       style="-fx-text-fill: #eab308;
+                              -fx-font-size: 12px;
+                              -fx-font-weight: bold;" />
+
+                <Label text="● Consulta simples"
+                       style="-fx-text-fill: #22d3ee; -fx-font-weight: bold; -fx-font-size: 12px;" />
+                <Label text="● Pesquisa crítica"
+                       style="-fx-text-fill: #a855f7; -fx-font-weight: bold; -fx-font-size: 12px;" />
+                <Label text="● Ritual mágico"
+                       style="-fx-text-fill: #ef4444; -fx-font-weight: bold; -fx-font-size: 12px;" />
+                <Label text="● Ritual crítico"
+                       style="-fx-text-fill: #eab308; -fx-font-weight: bold; -fx-font-size: 12px;" />
+            </VBox>
+        </right>
+    </BorderPane>
+
+    <StackPane fx:id="introRoot"
+               prefWidth="1120"
+               prefHeight="690"
+               style="-fx-background-color: radial-gradient(center 50% 48%, radius 78%, #1e1b4b 0%, #0f172a 48%, #020617 100%);">
+
+        <StackPane fx:id="intro3dContainer" />
+
+        <VBox alignment="CENTER"
+              spacing="12"
+              mouseTransparent="false"
+              style="-fx-padding: 34;">
+
+            <Label text="ARCANELIBRARY"
+                   style="-fx-text-fill: #eab308;
+                          -fx-font-size: 46px;
+                          -fx-font-weight: bold;" />
+
+            <Label text="A Biblioteca Arcana e o Controle de Conhecimento"
+                   style="-fx-text-fill: #e5e7eb;
+                          -fx-font-size: 16px;" />
+
+            <Label text="Leitores, escritores e rituais disputando grimórios em uma simulação concorrente."
+                   wrapText="true"
+                   maxWidth="650"
+                   alignment="CENTER"
+                   style="-fx-text-fill: #94a3b8;
+                          -fx-font-size: 13px;" />
+
+            <Button fx:id="btnEntrar"
+                    text="ENTRAR"
+                    prefWidth="165"
+                    prefHeight="38"
+                    style="-fx-background-color: linear-gradient(to right, #22d3ee, #8b5cf6, #eab308);
+                           -fx-text-fill: #020617;
+                           -fx-font-size: 13px;
+                           -fx-font-weight: bold;
+                           -fx-background-radius: 22;
+                           -fx-cursor: hand;" />
+
+            <Label text="Cena 3D JavaFX • Dashboard compacto • Métricas em tempo real"
+                   style="-fx-text-fill: #64748b;
+                          -fx-font-size: 11px;" />
         </VBox>
-    </right>
+    </StackPane>
 
-    <bottom>
-        <VBox style="-fx-padding: 10 15 15 15; -fx-background-color: #0b0b10;">
-            <Label style="-fx-text-fill: #d4af37; -fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 0 0 5 0;" text="LOG DE EVENTOS" />
-            <TextArea fx:id="logTextArea" editable="false" prefHeight="130.0" style="-fx-font-family: monospace; -fx-control-inner-background: #000000; -fx-text-fill: #a4b0be; -fx-border-color: #2f3542; -fx-border-width: 1;" />
-        </VBox>
-    </bottom>
-
-</BorderPane>
+</StackPane>

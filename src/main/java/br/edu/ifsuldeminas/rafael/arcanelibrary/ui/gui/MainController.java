@@ -1,6 +1,7 @@
 package br.edu.ifsuldeminas.rafael.arcanelibrary.ui.gui;
 
 import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.AccessRequest;
+import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.MageAccessType;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.domain.MageState;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.EventBus;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.events.SimulationEvent;
@@ -8,22 +9,37 @@ import br.edu.ifsuldeminas.rafael.arcanelibrary.events.SimulationObserver;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.simulation.SimulationConfig;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.simulation.SimulationEngine;
 import br.edu.ifsuldeminas.rafael.arcanelibrary.synchronization.SynchronizationSnapshot;
+import javafx.animation.Animation;
+import javafx.animation.FadeTransition;
+import javafx.animation.ParallelTransition;
+import javafx.animation.RotateTransition;
+import javafx.animation.ScaleTransition;
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
+import javafx.scene.AmbientLight;
+import javafx.scene.Group;
+import javafx.scene.PerspectiveCamera;
+import javafx.scene.PointLight;
+import javafx.scene.SceneAntialiasing;
+import javafx.scene.SubScene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
-import javafx.scene.effect.DropShadow;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.Pane;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
+import javafx.scene.paint.PhongMaterial;
+import javafx.scene.shape.Box;
+import javafx.scene.shape.Cylinder;
+import javafx.scene.shape.Sphere;
+import javafx.scene.transform.Rotate;
+import javafx.util.Duration;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -32,97 +48,309 @@ import java.util.Map;
 
 public class MainController implements SimulationObserver {
 
-    @FXML private ListView<String> filaListView;
-    @FXML private Pane palcoAnimacaoPane;
-    @FXML private VBox metricasVBox;
-    @FXML private ComboBox<String> cenarioComboBox;
+    @FXML private StackPane appRoot;
+    @FXML private StackPane introRoot;
+    @FXML private StackPane intro3dContainer;
+    @FXML private StackPane libraryViewport;
+    @FXML private BorderPane dashboardRoot;
+
+    @FXML private Button btnEntrar;
+    @FXML private Button btnVoltarInicio;
     @FXML private Button btnIniciar;
     @FXML private Button btnParar;
+
+    @FXML private ListView<String> filaListView;
+    @FXML private VBox metricasVBox;
+    @FXML private ComboBox<String> cenarioComboBox;
     @FXML private TextArea logTextArea;
+    @FXML private Label lblSceneInfo;
+
+    @FXML private TextField txtSimpleReaders;
+    @FXML private TextField txtCriticalReaders;
+    @FXML private TextField txtWriters;
+    @FXML private TextField txtCriticalWriters;
 
     private SimulationEngine currentEngine;
     private EventBus eventBus;
     private SimulationConfig config;
 
-    // Organiza os magos POR LIVRO que eles estão acessando
+    private Group activeTablesLayer;
+    private Group activeBooksLayer;
+    private Group activeAgentsLayer;
+
     private final Map<String, Map<String, ProcessInfo>> mesasDeLivros = new LinkedHashMap<>();
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
     private record ProcessInfo(AccessRequest process, MageState state) {}
 
-    // Assets Visuais
-    private Image imgLivro;
-    private Image imgMagoComum;
-    private Image imgMagoCritico;
-    private Image imgMagoEscritor;
-
     @FXML
     public void initialize() {
         config = SimulationConfig.defaultConfig();
 
         cenarioComboBox.getItems().addAll(
-                "1. Sincronização Padrão (1 Livro)",
-                "2. Granularidade (3 Livros)",
-                "3. Modo Caos (Sem Sincronização)",
-                "4. Abraço Mortal (Deadlock)",
-                "5. Inanição (Starvation)"
+                "1. Política Equilibrada (1 Grimório)",
+                "2. Biblioteca com Múltiplos Grimórios",
+                "3. Race Condition (Sem Sincronização)",
+                "4. Deadlock (Reserva Cruzada)",
+                "5. Starvation (Leitores Bloqueando Rituais)"
         );
+
         cenarioComboBox.getSelectionModel().selectFirst();
 
-        btnParar.setDisable(true);
-        btnIniciar.setOnAction(e -> iniciarSimulacao());
-        btnParar.setOnAction(e -> pararSimulacao());
+        txtSimpleReaders.setText(String.valueOf(config.simpleReaders()));
+        txtCriticalReaders.setText(String.valueOf(config.criticalReaders()));
+        txtWriters.setText(String.valueOf(config.writers()));
+        txtCriticalWriters.setText(String.valueOf(config.criticalWriters()));
 
-        carregarImagens();
+        btnParar.setDisable(true);
+
+        btnEntrar.setOnAction(event -> entrarNaBiblioteca());
+        btnVoltarInicio.setOnAction(event -> voltarParaPortal());
+        btnIniciar.setOnAction(event -> iniciarSimulacao());
+        btnParar.setOnAction(event -> pararSimulacao());
+
+        aplicarEstiloBotaoIniciarNormal();
+        montarPortal3D();
+        montarBiblioteca3D();
+        prepararEstadoInicial();
     }
 
-    private void carregarImagens() {
-        try {
-            imgLivro = new Image(getClass().getResourceAsStream("/br/edu/ifsuldeminas/rafael/arcanelibrary/ui/gui/assets/livro.png"));
-            imgMagoComum = new Image(getClass().getResourceAsStream("/br/edu/ifsuldeminas/rafael/arcanelibrary/ui/gui/assets/mago_azul.png"));
-            imgMagoCritico = new Image(getClass().getResourceAsStream("/br/edu/ifsuldeminas/rafael/arcanelibrary/ui/gui/assets/mago_roxo.png"));
-            imgMagoEscritor = new Image(getClass().getResourceAsStream("/br/edu/ifsuldeminas/rafael/arcanelibrary/ui/gui/assets/mago_vermelho.png"));
-        } catch (Exception e) {
-            System.out.println("⚠️ Imagens não encontradas na pasta assets. Usando formas geométricas de fallback.");
+    private void prepararEstadoInicial() {
+        dashboardRoot.setOpacity(0.0);
+        dashboardRoot.setScaleX(0.98);
+        dashboardRoot.setScaleY(0.98);
+        dashboardRoot.setDisable(true);
+
+        introRoot.setOpacity(1.0);
+        introRoot.setScaleX(1.0);
+        introRoot.setScaleY(1.0);
+        introRoot.setVisible(true);
+        introRoot.setManaged(true);
+
+        btnVoltarInicio.setVisible(false);
+        btnVoltarInicio.setManaged(false);
+
+        prepararMetricasIniciais();
+        atualizarCenaBiblioteca3D();
+    }
+
+    private void entrarNaBiblioteca() {
+        dashboardRoot.setDisable(false);
+
+        btnVoltarInicio.setVisible(true);
+        btnVoltarInicio.setManaged(true);
+
+        FadeTransition fadeIntro = new FadeTransition(Duration.millis(750), introRoot);
+        fadeIntro.setFromValue(1.0);
+        fadeIntro.setToValue(0.0);
+
+        ScaleTransition zoomIntro = new ScaleTransition(Duration.millis(750), introRoot);
+        zoomIntro.setFromX(1.0);
+        zoomIntro.setFromY(1.0);
+        zoomIntro.setToX(1.12);
+        zoomIntro.setToY(1.12);
+
+        FadeTransition fadeDashboard = new FadeTransition(Duration.millis(750), dashboardRoot);
+        fadeDashboard.setFromValue(0.0);
+        fadeDashboard.setToValue(1.0);
+
+        ScaleTransition zoomDashboard = new ScaleTransition(Duration.millis(750), dashboardRoot);
+        zoomDashboard.setFromX(0.98);
+        zoomDashboard.setFromY(0.98);
+        zoomDashboard.setToX(1.0);
+        zoomDashboard.setToY(1.0);
+
+        TranslateTransition moveDashboard = new TranslateTransition(Duration.millis(750), dashboardRoot);
+        moveDashboard.setFromY(18);
+        moveDashboard.setToY(0);
+
+        ParallelTransition transition = new ParallelTransition(
+                fadeIntro,
+                zoomIntro,
+                fadeDashboard,
+                zoomDashboard,
+                moveDashboard
+        );
+
+        transition.setOnFinished(event -> {
+            introRoot.setVisible(false);
+            introRoot.setManaged(false);
+        });
+
+        transition.play();
+    }
+
+    private void voltarParaPortal() {
+        if (currentEngine != null) {
+            pararSimulacao();
         }
+
+        introRoot.setVisible(true);
+        introRoot.setManaged(true);
+        introRoot.setOpacity(0.0);
+        introRoot.setScaleX(1.08);
+        introRoot.setScaleY(1.08);
+
+        FadeTransition fadeDashboard = new FadeTransition(Duration.millis(600), dashboardRoot);
+        fadeDashboard.setFromValue(1.0);
+        fadeDashboard.setToValue(0.0);
+
+        ScaleTransition zoomDashboard = new ScaleTransition(Duration.millis(600), dashboardRoot);
+        zoomDashboard.setFromX(1.0);
+        zoomDashboard.setFromY(1.0);
+        zoomDashboard.setToX(0.98);
+        zoomDashboard.setToY(0.98);
+
+        FadeTransition fadeIntro = new FadeTransition(Duration.millis(600), introRoot);
+        fadeIntro.setFromValue(0.0);
+        fadeIntro.setToValue(1.0);
+
+        ScaleTransition zoomIntro = new ScaleTransition(Duration.millis(600), introRoot);
+        zoomIntro.setFromX(1.08);
+        zoomIntro.setFromY(1.08);
+        zoomIntro.setToX(1.0);
+        zoomIntro.setToY(1.0);
+
+        ParallelTransition transition = new ParallelTransition(
+                fadeDashboard,
+                zoomDashboard,
+                fadeIntro,
+                zoomIntro
+        );
+
+        transition.setOnFinished(event -> {
+            dashboardRoot.setDisable(true);
+            btnVoltarInicio.setVisible(false);
+            btnVoltarInicio.setManaged(false);
+        });
+
+        transition.play();
     }
 
     private void iniciarSimulacao() {
+        if (currentEngine != null) {
+            return;
+        }
+
+        config = SimulationConfig.defaultConfig().withAgentAmounts(
+                lerInteiro(txtSimpleReaders, 3),
+                lerInteiro(txtCriticalReaders, 2),
+                lerInteiro(txtWriters, 2),
+                lerInteiro(txtCriticalWriters, 1)
+        );
+
         logTextArea.clear();
         filaListView.getItems().clear();
         metricasVBox.getChildren().clear();
         mesasDeLivros.clear();
-        palcoAnimacaoPane.getChildren().clear();
+        atualizarCenaBiblioteca3D();
 
         eventBus = new EventBus();
         eventBus.addObserver(this);
 
         int selectedIndex = cenarioComboBox.getSelectionModel().getSelectedIndex();
+
         switch (selectedIndex) {
             case 0 -> currentEngine = SimulationEngine.defaultScenario(config, eventBus);
             case 1 -> currentEngine = SimulationEngine.libraryScenario(config, eventBus);
             case 2 -> currentEngine = SimulationEngine.chaosScenario(config, eventBus);
             case 3 -> currentEngine = SimulationEngine.deadlockScenario(config, eventBus);
             case 4 -> currentEngine = SimulationEngine.starvationScenario(config, eventBus);
+            default -> currentEngine = SimulationEngine.defaultScenario(config, eventBus);
         }
 
-        btnIniciar.setDisable(true);
-        cenarioComboBox.setDisable(true);
-        btnParar.setDisable(false);
+        aplicarEstiloBotaoIniciarRodando();
 
-        new Thread(() -> currentEngine.start(), "Thread-Engine-Principal").start();
+        btnParar.setDisable(false);
+        cenarioComboBox.setDisable(true);
+        bloquearCamposConfiguracao(true);
+
+        Thread engineThread = new Thread(currentEngine::start, "Thread-Engine-Principal");
+        engineThread.setDaemon(true);
+        engineThread.start();
     }
 
     private void pararSimulacao() {
-        if (currentEngine != null) {
-            currentEngine.stop();
-            String relatorio = currentEngine.metricsReport();
-            Platform.runLater(() -> logTextArea.appendText("\n" + relatorio + "\n"));
+        SimulationEngine engineToStop = currentEngine;
+
+        if (engineToStop == null) {
+            resetarControles();
+            return;
         }
-        btnIniciar.setDisable(false);
-        cenarioComboBox.setDisable(false);
+
         btnParar.setDisable(true);
+
+        Thread stopThread = new Thread(() -> {
+            engineToStop.stop();
+            String relatorio = engineToStop.metricsReport();
+
+            Platform.runLater(() -> {
+                logTextArea.appendText("\n" + relatorio + "\n");
+                currentEngine = null;
+                resetarControles();
+            });
+        }, "Thread-Parada-Simulacao");
+
+        stopThread.setDaemon(true);
+        stopThread.start();
+    }
+
+    private void resetarControles() {
+        aplicarEstiloBotaoIniciarNormal();
+
+        btnParar.setDisable(true);
+        cenarioComboBox.setDisable(false);
+        bloquearCamposConfiguracao(false);
+    }
+
+    private void aplicarEstiloBotaoIniciarNormal() {
+        btnIniciar.setDisable(false);
+        btnIniciar.setText("▶");
+        btnIniciar.setStyle(
+                "-fx-background-color: #22c55e;" +
+                        "-fx-text-fill: #052e16;" +
+                        "-fx-font-size: 13px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-cursor: hand;"
+        );
+    }
+
+    private void aplicarEstiloBotaoIniciarRodando() {
+        btnIniciar.setDisable(false);
+        btnIniciar.setText("⏳");
+        btnIniciar.setStyle(
+                "-fx-background-color: #475569;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-size: 13px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 8;" +
+                        "-fx-cursor: default;"
+        );
+    }
+
+    private void bloquearCamposConfiguracao(boolean bloquear) {
+        txtSimpleReaders.setDisable(bloquear);
+        txtCriticalReaders.setDisable(bloquear);
+        txtWriters.setDisable(bloquear);
+        txtCriticalWriters.setDisable(bloquear);
+    }
+
+    private int lerInteiro(TextField field, int fallback) {
+        try {
+            int value = Integer.parseInt(field.getText().trim());
+
+            if (value < 0) {
+                field.setText(String.valueOf(fallback));
+                return fallback;
+            }
+
+            return value;
+        } catch (Exception ignored) {
+            field.setText(String.valueOf(fallback));
+            return fallback;
+        }
     }
 
     @Override
@@ -131,27 +359,40 @@ public class MainController implements SimulationObserver {
             try {
                 String time = TIME_FORMATTER.format(event.timestamp().atZone(ZoneId.systemDefault()));
                 String processName = event.process() == null ? "[SISTEMA]" : event.process().label();
-                logTextArea.appendText(String.format("[%s] %-25s %s\n", time, processName, event.message()));
+
+                logTextArea.appendText(String.format("[%s] %-32s %s\n", time, processName, event.message()));
+                limitarLog();
 
                 if (event.process() != null && event.state() != null) {
                     atualizarFilaVisual(event.process(), event.state());
+
                     String msgSegura = event.message() != null ? event.message() : "";
-                    atualizarEstadoPalco(event.process(), event.state(), msgSegura);
+                    atualizarEstadoBiblioteca(event.process(), event.state(), msgSegura);
                 }
 
                 if (event.snapshot() != null) {
                     atualizarMetricasDireita(event.snapshot());
                 }
             } catch (Exception e) {
-                System.err.println("Erro ao renderizar frame: " + e.getMessage());
+                System.err.println("Erro ao renderizar evento: " + e.getMessage());
             }
         });
+    }
+
+    private void limitarLog() {
+        int limite = 30_000;
+
+        if (logTextArea.getLength() > limite) {
+            logTextArea.deleteText(0, 8_000);
+        }
     }
 
     private void atualizarFilaVisual(AccessRequest process, MageState state) {
         filaListView.getItems().removeIf(item -> item.contains(process.label()));
 
-        if (state == MageState.RESTING || state == MageState.STOPPED) return;
+        if (state == MageState.RESTING || state == MageState.STOPPED) {
+            return;
+        }
 
         String sigla = switch (process.role()) {
             case SIMPLE_CONSULTATION -> "[CS]";
@@ -160,22 +401,23 @@ public class MainController implements SimulationObserver {
             case CRITICAL_RITUAL -> "[RC]";
         };
 
-        String status = state == MageState.WAITING ? "⏳ Aguardando" :
-                (state == MageState.WRITING ? "✍️ Escrevendo" : "📖 Lendo");
+        String status = state == MageState.WAITING
+                ? "⏳"
+                : state == MageState.WRITING
+                  ? "✍️"
+                  : "📖";
 
         filaListView.getItems().add(String.format("%s %s %s", status, sigla, process.label()));
+
+        while (filaListView.getItems().size() > 250) {
+            filaListView.getItems().remove(0);
+        }
     }
 
-    private void atualizarEstadoPalco(AccessRequest process, MageState state, String message) {
+    private void atualizarEstadoBiblioteca(AccessRequest process, MageState state, String message) {
         if (state == MageState.READING || state == MageState.WRITING) {
-            String nomeLivro = "Grimório Desconhecido";
-            if (message.contains("'")) {
-                int start = message.indexOf("'") + 1;
-                int end = message.indexOf("'", start);
-                if (start > 0 && end > start) {
-                    nomeLivro = message.substring(start, end);
-                }
-            }
+            String nomeLivro = extrairNomeLivro(message);
+
             mesasDeLivros.putIfAbsent(nomeLivro, new LinkedHashMap<>());
             mesasDeLivros.get(nomeLivro).put(process.label(), new ProcessInfo(process, state));
         } else {
@@ -183,134 +425,424 @@ public class MainController implements SimulationObserver {
                 magosNoLivro.remove(process.label());
             }
         }
-        desenharMutiplosPalcos();
+
+        atualizarCenaBiblioteca3D();
     }
 
-    private void desenharMutiplosPalcos() {
-        palcoAnimacaoPane.getChildren().clear();
+    private String extrairNomeLivro(String message) {
+        String fallback = "Grimório Central";
+
+        if (message == null || !message.contains("'")) {
+            return fallback;
+        }
+
+        int start = message.indexOf("'") + 1;
+        int end = message.indexOf("'", start);
+
+        if (start > 0 && end > start) {
+            return message.substring(start, end);
+        }
+
+        return fallback;
+    }
+
+    private void montarPortal3D() {
+        Group portalWorld = new Group();
+
+        AmbientLight ambient = new AmbientLight(Color.web("#64748b"));
+
+        PointLight cyanLight = new PointLight(Color.web("#22d3ee"));
+        cyanLight.setTranslateX(-220);
+        cyanLight.setTranslateY(-180);
+        cyanLight.setTranslateZ(-220);
+
+        PointLight goldLight = new PointLight(Color.web("#eab308"));
+        goldLight.setTranslateX(220);
+        goldLight.setTranslateY(-120);
+        goldLight.setTranslateZ(-160);
+
+        Group ringOuter = criarAnelDeEsferas(190, 44, 5, Color.web("#22d3ee"));
+        Group ringInner = criarAnelDeEsferas(125, 32, 4, Color.web("#8b5cf6"));
+
+        Group book = criarLivro3D(1.45);
+        book.setTranslateY(20);
+        book.setTranslateZ(40);
+
+        RotateTransition introBookRotation = new RotateTransition(Duration.seconds(7), book);
+        introBookRotation.setAxis(Rotate.Y_AXIS);
+        introBookRotation.setByAngle(360);
+        introBookRotation.setCycleCount(Animation.INDEFINITE);
+        introBookRotation.play();
+
+        RotateTransition ringRotation = new RotateTransition(Duration.seconds(12), ringOuter);
+        ringRotation.setAxis(Rotate.Z_AXIS);
+        ringRotation.setByAngle(360);
+        ringRotation.setCycleCount(Animation.INDEFINITE);
+        ringRotation.play();
+
+        RotateTransition ringInnerRotation = new RotateTransition(Duration.seconds(9), ringInner);
+        ringInnerRotation.setAxis(Rotate.Z_AXIS);
+        ringInnerRotation.setByAngle(-360);
+        ringInnerRotation.setCycleCount(Animation.INDEFINITE);
+        ringInnerRotation.play();
+
+        portalWorld.getChildren().addAll(
+                ambient,
+                cyanLight,
+                goldLight,
+                ringOuter,
+                ringInner,
+                book
+        );
+
+        portalWorld.getTransforms().add(new Rotate(-10, Rotate.X_AXIS));
+
+        SubScene subScene = criarSubScene(portalWorld, intro3dContainer, -760);
+        intro3dContainer.getChildren().setAll(subScene);
+    }
+
+    private void montarBiblioteca3D() {
+        Group libraryWorld = new Group();
+
+        activeTablesLayer = new Group();
+        activeBooksLayer = new Group();
+        activeAgentsLayer = new Group();
+
+        AmbientLight ambient = new AmbientLight(Color.web("#94a3b8"));
+
+        PointLight mainLight = new PointLight(Color.web("#eab308"));
+        mainLight.setTranslateX(-260);
+        mainLight.setTranslateY(-260);
+        mainLight.setTranslateZ(-260);
+
+        PointLight blueLight = new PointLight(Color.web("#22d3ee"));
+        blueLight.setTranslateX(280);
+        blueLight.setTranslateY(-190);
+        blueLight.setTranslateZ(-180);
+
+        Group ambiente = criarAmbienteBiblioteca3D();
+
+        Group livroCentral = criarLivro3D(0.95);
+        livroCentral.setTranslateY(35);
+        livroCentral.setTranslateZ(25);
+
+        RotateTransition libraryBookRotation = new RotateTransition(Duration.seconds(14), livroCentral);
+        libraryBookRotation.setAxis(Rotate.Y_AXIS);
+        libraryBookRotation.setByAngle(360);
+        libraryBookRotation.setCycleCount(Animation.INDEFINITE);
+        libraryBookRotation.play();
+
+        Group anelEnergia = criarAnelDeEsferas(145, 34, 3.5, Color.web("#22d3ee"));
+        anelEnergia.setTranslateY(45);
+        anelEnergia.setTranslateZ(25);
+        anelEnergia.getTransforms().add(new Rotate(90, Rotate.X_AXIS));
+
+        RotateTransition anelTransition = new RotateTransition(Duration.seconds(10), anelEnergia);
+        anelTransition.setAxis(Rotate.Y_AXIS);
+        anelTransition.setByAngle(360);
+        anelTransition.setCycleCount(Animation.INDEFINITE);
+        anelTransition.play();
+
+        libraryWorld.getChildren().addAll(
+                ambiente,
+                activeTablesLayer,
+                ambient,
+                mainLight,
+                blueLight,
+                anelEnergia,
+                livroCentral,
+                activeBooksLayer,
+                activeAgentsLayer
+        );
+
+        libraryWorld.getTransforms().add(new Rotate(-13, Rotate.X_AXIS));
+
+        SubScene subScene = criarSubScene(libraryWorld, libraryViewport, -980);
+        libraryViewport.getChildren().setAll(subScene);
+    }
+
+    private SubScene criarSubScene(Group world, StackPane container, double cameraZ) {
+        SubScene subScene = new SubScene(world, 900, 650, true, SceneAntialiasing.BALANCED);
+        subScene.setFill(Color.TRANSPARENT);
+
+        PerspectiveCamera camera = new PerspectiveCamera(true);
+        camera.setTranslateZ(cameraZ);
+        camera.setTranslateY(-35);
+        camera.setNearClip(0.1);
+        camera.setFarClip(5_000);
+        camera.setFieldOfView(42);
+
+        subScene.setCamera(camera);
+        subScene.widthProperty().bind(container.widthProperty());
+        subScene.heightProperty().bind(container.heightProperty());
+
+        return subScene;
+    }
+
+    private Group criarAmbienteBiblioteca3D() {
+        Group ambiente = new Group();
+
+        PhongMaterial floorMat = material("#0b1120");
+        PhongMaterial borderMat = material("#1e293b");
+        PhongMaterial magicMat = material("#0f172a");
+
+        Box floor = new Box(950, 18, 680);
+        floor.setTranslateY(170);
+        floor.setTranslateZ(80);
+        floor.setMaterial(floorMat);
+
+        Box backPanel = new Box(920, 260, 16);
+        backPanel.setTranslateY(25);
+        backPanel.setTranslateZ(390);
+        backPanel.setMaterial(magicMat);
+
+        Box leftColumn = new Box(24, 230, 24);
+        leftColumn.setTranslateX(-430);
+        leftColumn.setTranslateY(45);
+        leftColumn.setTranslateZ(250);
+        leftColumn.setMaterial(borderMat);
+
+        Box rightColumn = new Box(24, 230, 24);
+        rightColumn.setTranslateX(430);
+        rightColumn.setTranslateY(45);
+        rightColumn.setTranslateZ(250);
+        rightColumn.setMaterial(borderMat);
+
+        Box floorLine = new Box(760, 4, 8);
+        floorLine.setTranslateY(158);
+        floorLine.setTranslateZ(-180);
+        floorLine.setMaterial(borderMat);
+
+        ambiente.getChildren().addAll(
+                floor,
+                backPanel,
+                leftColumn,
+                rightColumn,
+                floorLine
+        );
+
+        return ambiente;
+    }
+
+    private Group criarMesa3D(double escala) {
+        Group mesa = new Group();
+
+        PhongMaterial tableMat = material("#5c3b25");
+        PhongMaterial tableDarkMat = material("#2f1b12");
+
+        Cylinder tableTop = new Cylinder(155 * escala, 18 * escala);
+        tableTop.setTranslateY(85 * escala);
+        tableTop.setMaterial(tableMat);
+
+        Cylinder tableBase = new Cylinder(42 * escala, 115 * escala);
+        tableBase.setTranslateY(145 * escala);
+        tableBase.setMaterial(tableDarkMat);
+
+        Cylinder tableFoot = new Cylinder(80 * escala, 12 * escala);
+        tableFoot.setTranslateY(205 * escala);
+        tableFoot.setMaterial(tableDarkMat);
+
+        mesa.getChildren().addAll(tableTop, tableBase, tableFoot);
+
+        return mesa;
+    }
+
+    private void desenharMesasDaCena(int qtdLivros) {
+        if (activeTablesLayer == null) {
+            return;
+        }
+
+        activeTablesLayer.getChildren().clear();
+
+        if (qtdLivros <= 1) {
+            Group mesaCentral = criarMesa3D(1.0);
+            mesaCentral.setTranslateX(0);
+            mesaCentral.setTranslateZ(0);
+            activeTablesLayer.getChildren().add(mesaCentral);
+            return;
+        }
+
+        Group mesaCentro = criarMesa3D(0.82);
+        mesaCentro.setTranslateX(0);
+        mesaCentro.setTranslateZ(0);
+
+        Group mesaEsquerda = criarMesa3D(0.68);
+        mesaEsquerda.setTranslateX(-285);
+        mesaEsquerda.setTranslateZ(45);
+
+        Group mesaDireita = criarMesa3D(0.68);
+        mesaDireita.setTranslateX(285);
+        mesaDireita.setTranslateZ(45);
+
+        activeTablesLayer.getChildren().addAll(
+                mesaEsquerda,
+                mesaCentro,
+                mesaDireita
+        );
+    }
+
+    private Group criarLivro3D(double escala) {
+        Group book = new Group();
+
+        Box cover = new Box(150 * escala, 18 * escala, 105 * escala);
+        cover.setMaterial(material("#4c1d95"));
+
+        Box pages = new Box(128 * escala, 12 * escala, 88 * escala);
+        pages.setTranslateY(-3 * escala);
+        pages.setTranslateX(8 * escala);
+        pages.setMaterial(material("#f8fafc"));
+
+        Box spine = new Box(20 * escala, 24 * escala, 112 * escala);
+        spine.setTranslateX(-78 * escala);
+        spine.setMaterial(material("#7f1d1d"));
+
+        Box goldLine = new Box(8 * escala, 26 * escala, 115 * escala);
+        goldLine.setTranslateX(-48 * escala);
+        goldLine.setMaterial(material("#eab308"));
+
+        Sphere gem = new Sphere(10 * escala);
+        gem.setTranslateY(-16 * escala);
+        gem.setTranslateZ(-2 * escala);
+        gem.setMaterial(material("#22d3ee"));
+
+        book.getChildren().addAll(cover, pages, spine, goldLine, gem);
+        return book;
+    }
+
+    private Group criarMago3D(AccessRequest process, MageState state, double escala) {
+        Group mage = new Group();
+
+        Color cor = corPorTipo(process.role());
+
+        Cylinder body = new Cylinder(12 * escala, 42 * escala);
+        body.setTranslateY(0);
+        body.setMaterial(new PhongMaterial(cor));
+
+        Sphere head = new Sphere(12 * escala);
+        head.setTranslateY(-32 * escala);
+        head.setMaterial(material("#e5e7eb"));
+
+        Cylinder base = new Cylinder(18 * escala, 7 * escala);
+        base.setTranslateY(25 * escala);
+        base.setMaterial(material("#020617"));
+
+        Sphere orb = new Sphere((state == MageState.WRITING ? 8 : 5) * escala);
+        orb.setTranslateY(-58 * escala);
+        orb.setMaterial(new PhongMaterial(cor.brighter()));
+
+        PointLight personalLight = new PointLight(cor);
+        personalLight.setTranslateY(-65 * escala);
+        personalLight.setTranslateZ(-25 * escala);
+
+        mage.getChildren().addAll(base, body, head, orb, personalLight);
+        return mage;
+    }
+
+    private Group criarAnelDeEsferas(double radius, int count, double sphereRadius, Color color) {
+        Group ring = new Group();
+        PhongMaterial mat = new PhongMaterial(color);
+
+        for (int i = 0; i < count; i++) {
+            double angle = 2 * Math.PI * i / count;
+
+            Sphere sphere = new Sphere(sphereRadius);
+            sphere.setTranslateX(radius * Math.cos(angle));
+            sphere.setTranslateY(radius * Math.sin(angle));
+            sphere.setMaterial(mat);
+
+            ring.getChildren().add(sphere);
+        }
+
+        return ring;
+    }
+
+    private void atualizarCenaBiblioteca3D() {
+        if (activeBooksLayer == null || activeAgentsLayer == null || activeTablesLayer == null) {
+            return;
+        }
+
+        activeBooksLayer.getChildren().clear();
+        activeAgentsLayer.getChildren().clear();
 
         int qtdLivros = mesasDeLivros.size();
-        if (qtdLivros == 0) return;
 
-        double width = palcoAnimacaoPane.getWidth();
-        double height = palcoAnimacaoPane.getHeight();
-        if (width == 0) width = 700;
-        if (height == 0) height = 600;
+        desenharMesasDaCena(qtdLivros);
 
-        // LÓGICA DE TAMANHO DINÂMICO
-        int tamanhoLivroImg = (qtdLivros == 1) ? 170 : 100; // Se for 1, livro grande. Se 3, médio.
-        int tamanhoFonteLivro = (qtdLivros == 1) ? 16 : 13;
-        double radiusMago = (qtdLivros == 1) ? 160 : 120; // Afasta mais se o livro for grande
-        int tamanhoMagoImg = (qtdLivros == 1) ? 65 : 55; // Magos maiores no cenário de 1 livro
+        if (qtdLivros == 0) {
+            lblSceneInfo.setText("Biblioteca 3D aguardando simulação");
+            return;
+        }
 
+        int totalAtivos = mesasDeLivros.values()
+                .stream()
+                .mapToInt(Map::size)
+                .sum();
+
+        int visualizados = 0;
+        int limiteTotal = 48;
         int i = 0;
+
         for (Map.Entry<String, Map<String, ProcessInfo>> mesa : mesasDeLivros.entrySet()) {
-            String nomeLivro = mesa.getKey();
             Map<String, ProcessInfo> magos = mesa.getValue();
 
-            // Se for só 1 livro, centraliza um pouco mais para cima para dar presença
-            double cx = width / 2.0;
-            double cy = (height / 2.0) + (qtdLivros == 1 ? 40 : 80);
+            double bookX = qtdLivros == 1
+                    ? 0
+                    : -260 + (520.0 * i / Math.max(qtdLivros - 1, 1));
 
-            if (qtdLivros > 1) {
-                cx = (width / 2.0) + 210 * Math.cos(2 * Math.PI * i / qtdLivros - Math.PI / 2);
-                cy = (height / 2.0) + 80 + 210 * Math.sin(2 * Math.PI * i / qtdLivros - Math.PI / 2);
-            }
+            double bookZ = qtdLivros == 1
+                    ? -35
+                    : 20 + 35 * Math.sin(i);
 
-            // --- LIVRO ---
-            int tamanhoCaixaLivro = tamanhoLivroImg + 40; // Espaço extra pro texto embaixo
-            StackPane nodeLivro = criarLivroGrafico(nomeLivro, tamanhoLivroImg, tamanhoFonteLivro);
-            nodeLivro.setPrefSize(tamanhoCaixaLivro, tamanhoCaixaLivro);
-            nodeLivro.setLayoutX(cx - (tamanhoCaixaLivro / 2.0));
-            nodeLivro.setLayoutY(cy - (tamanhoCaixaLivro / 2.0));
-            palcoAnimacaoPane.getChildren().add(nodeLivro);
+            Group bookMini = criarLivro3D(0.45);
+            bookMini.setTranslateX(bookX);
+            bookMini.setTranslateY(40);
+            bookMini.setTranslateZ(bookZ);
+            activeBooksLayer.getChildren().add(bookMini);
 
-            // --- MAGOS ---
-            int idxMago = 0;
-            int totalMagos = magos.size();
+            int limitePorLivro = Math.max(6, limiteTotal / Math.max(qtdLivros, 1));
+            int idx = 0;
+
             for (ProcessInfo info : magos.values()) {
-                double angle = 2 * Math.PI * idxMago / (totalMagos > 0 ? totalMagos : 1);
+                if (visualizados >= limiteTotal || idx >= limitePorLivro) {
+                    break;
+                }
 
-                double mx = cx + radiusMago * Math.cos(angle);
-                double my = cy + radiusMago * Math.sin(angle);
+                double angle = 2 * Math.PI * idx / Math.max(Math.min(magos.size(), limitePorLivro), 1);
+                double radius = qtdLivros == 1 ? 190 : 105;
 
-                int tamanhoCaixaMago = tamanhoMagoImg + 30; // Espaço extra pro nome
-                StackPane magoVisual = criarMagoGrafico(info, tamanhoMagoImg);
-                magoVisual.setPrefSize(tamanhoCaixaMago, tamanhoCaixaMago);
-                magoVisual.setLayoutX(mx - (tamanhoCaixaMago / 2.0));
-                magoVisual.setLayoutY(my - (tamanhoCaixaMago / 2.0));
-                palcoAnimacaoPane.getChildren().add(magoVisual);
+                Group mage = criarMago3D(info.process(), info.state(), qtdLivros == 1 ? 1.0 : 0.82);
 
-                idxMago++;
+                mage.setTranslateX(bookX + radius * Math.cos(angle));
+                mage.setTranslateY(88);
+                mage.setTranslateZ(bookZ + radius * Math.sin(angle));
+
+                activeAgentsLayer.getChildren().add(mage);
+
+                idx++;
+                visualizados++;
             }
+
             i++;
         }
-    }
 
-    private StackPane criarLivroGrafico(String titulo, int sizeImg, int sizeFont) {
-        StackPane node = new StackPane();
-        VBox box = new VBox(5);
-        box.setAlignment(Pos.CENTER);
-
-        if (imgLivro != null) {
-            ImageView view = new ImageView(imgLivro);
-            view.setFitWidth(sizeImg);
-            view.setFitHeight(sizeImg);
-            view.setPreserveRatio(true);
-            box.getChildren().add(view);
+        if (totalAtivos > visualizados) {
+            lblSceneInfo.setText("Mostrando " + visualizados + " de " + totalAtivos + " agentes ativos em 3D");
         } else {
-            Circle c = new Circle(sizeImg / 2.0, Color.web("#d4af37"));
-            box.getChildren().add(c);
+            lblSceneInfo.setText(totalAtivos + " agente(s) ativo(s) na biblioteca 3D");
         }
-
-        Label lbl = new Label(titulo);
-        lbl.setStyle("-fx-text-fill: #d4af37; -fx-font-weight: bold; -fx-font-size: " + sizeFont + "px; -fx-alignment: center;");
-        box.getChildren().add(lbl);
-
-        node.getChildren().add(box);
-        return node;
     }
 
-    private StackPane criarMagoGrafico(ProcessInfo info, int sizeImg) {
-        StackPane node = new StackPane();
-        VBox box = new VBox(5);
-        box.setAlignment(Pos.CENTER);
-
-        Image imgSprite = switch (info.process().role()) {
-            case SIMPLE_CONSULTATION -> imgMagoComum;
-            case CRITICAL_RESEARCH -> imgMagoCritico;
-            case MAGICAL_RITUAL -> imgMagoEscritor;
-            case CRITICAL_RITUAL -> imgMagoEscritor;
+    private Color corPorTipo(MageAccessType type) {
+        return switch (type) {
+            case SIMPLE_CONSULTATION -> Color.web("#22d3ee");
+            case CRITICAL_RESEARCH -> Color.web("#a855f7");
+            case MAGICAL_RITUAL -> Color.web("#ef4444");
+            case CRITICAL_RITUAL -> Color.web("#eab308");
         };
+    }
 
-        if (imgSprite != null) {
-            ImageView view = new ImageView(imgSprite);
-            view.setFitWidth(sizeImg);
-            view.setFitHeight(sizeImg);
-            view.setPreserveRatio(true);
-
-            DropShadow glow = new DropShadow();
-            glow.setColor(info.state() == MageState.WRITING ? Color.RED : Color.CYAN);
-            glow.setRadius(10);
-            view.setEffect(glow);
-            box.getChildren().add(view);
-        } else {
-            Circle aura = new Circle(sizeImg / 3.0);
-            aura.setFill(switch (info.process().role()) {
-                case SIMPLE_CONSULTATION -> Color.web("#1e90ff");
-                case CRITICAL_RESEARCH -> Color.web("#9b59b6");
-                case MAGICAL_RITUAL -> Color.web("#e74c3c");
-                case CRITICAL_RITUAL -> Color.web("#f1c40f");
-            });
-            box.getChildren().add(aura);
-        }
-
-        Label nome = new Label(info.process().shortName());
-        nome.setStyle("-fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold;");
-
-        box.getChildren().addAll(nome);
-        node.getChildren().add(box);
-        return node;
+    private PhongMaterial material(String color) {
+        return new PhongMaterial(Color.web(color));
     }
 
     private void atualizarMetricasDireita(SynchronizationSnapshot snap) {
@@ -318,56 +850,86 @@ public class MainController implements SimulationObserver {
 
         VBox cardAcesso = criarCartaoBase("ACESSO ATUAL");
         Label lblStatus = new Label();
-        lblStatus.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        lblStatus.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
         if (snap.writerActive()) {
-            lblStatus.setText("⛔ ESCRITOR ATIVO");
-            lblStatus.setStyle(lblStatus.getStyle() + "-fx-text-fill: #e74c3c;");
+            lblStatus.setText("⛔ RITUAL ATIVO");
+            lblStatus.setStyle(lblStatus.getStyle() + "-fx-text-fill: #ef4444;");
         } else if (snap.activeReaders() > 0) {
-            lblStatus.setText("📖 " + snap.activeReaders() + " LEITOR(ES)");
-            lblStatus.setStyle(lblStatus.getStyle() + "-fx-text-fill: #1e90ff;");
+            lblStatus.setText("📖 " + snap.activeReaders() + " CONSULTA(S)");
+            lblStatus.setStyle(lblStatus.getStyle() + "-fx-text-fill: #22d3ee;");
         } else {
-            lblStatus.setText("✅ LIVRE");
-            lblStatus.setStyle(lblStatus.getStyle() + "-fx-text-fill: #2ecc71;");
+            lblStatus.setText("✅ GRIMÓRIO LIVRE");
+            lblStatus.setStyle(lblStatus.getStyle() + "-fx-text-fill: #22c55e;");
         }
+
         cardAcesso.getChildren().add(lblStatus);
 
-        VBox cardFila = criarCartaoBase("FILAS DE ESPERA");
+        VBox cardFila = criarCartaoBase("FILAS");
         cardFila.getChildren().addAll(
-                criarTextoInfo("Escritores: ", snap.waitingWriters(), "#e74c3c"),
-                criarTextoInfo("Leitores VIP: ", snap.waitingCriticalReaders(), "#9b59b6"),
-                criarTextoInfo("Leitores Comuns: ", snap.waitingCommonReaders(), "#1e90ff")
+                criarTextoInfo("Rituais: ", snap.waitingWriters(), "#ef4444"),
+                criarTextoInfo("Pesquisas críticas: ", snap.waitingCriticalReaders(), "#a855f7"),
+                criarTextoInfo("Consultas: ", snap.waitingCommonReaders(), "#22d3ee")
         );
 
-        VBox cardCotas = criarCartaoBase("MÉTRICAS DO MOTOR");
-        cardCotas.getChildren().addAll(
-                criarTextoInfo("Lote Leitores: ", snap.commonReaderBatchQuota(), "#ffffff"),
-                criarTextoInfo("Burst VIP Atual: ", snap.criticalVipBurst() + "/" + snap.maxCriticalVipBurst(), "#f1c40f"),
-                criarTextoInfo("Leituras Concluídas: ", (int) snap.completedReads(), "#7bed9f"),
-                criarTextoInfo("Escritas Concluídas: ", (int) snap.completedWrites(), "#ff7f50")
+        VBox cardMotor = criarCartaoBase("MOTOR");
+        cardMotor.getChildren().addAll(
+                criarTextoInfo("Lote consultas: ", snap.commonReaderBatchQuota(), "#e5e7eb"),
+                criarTextoInfo("Burst crítico: ", snap.criticalVipBurst() + "/" + snap.maxCriticalVipBurst(), "#eab308"),
+                criarTextoInfo("Leituras concluídas: ", (int) snap.completedReads(), "#86efac"),
+                criarTextoInfo("Escritas concluídas: ", (int) snap.completedWrites(), "#fb923c")
         );
 
-        metricasVBox.getChildren().addAll(cardAcesso, cardFila, cardCotas);
+        VBox cardConfig = criarCartaoBase("CONFIGURAÇÃO");
+        cardConfig.getChildren().addAll(
+                criarTextoInfo("Consultas: ", config.simpleReaders(), "#22d3ee"),
+                criarTextoInfo("Críticos: ", config.criticalReaders(), "#a855f7"),
+                criarTextoInfo("Rituais: ", config.writers(), "#ef4444"),
+                criarTextoInfo("Rituais críticos: ", config.criticalWriters(), "#eab308")
+        );
+
+        metricasVBox.getChildren().addAll(cardAcesso, cardFila, cardMotor, cardConfig);
+    }
+
+    private void prepararMetricasIniciais() {
+        metricasVBox.getChildren().clear();
+
+        VBox card = criarCartaoBase("STATUS");
+        Label texto = new Label("Aguardando início da simulação.");
+        texto.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 12px;");
+
+        card.getChildren().add(texto);
+        metricasVBox.getChildren().add(card);
     }
 
     private VBox criarCartaoBase(String titulo) {
         VBox box = new VBox(5);
         box.setAlignment(Pos.TOP_LEFT);
-        box.setStyle("-fx-background-color: #2f3542; -fx-padding: 10; -fx-background-radius: 5;");
+        box.setStyle(
+                "-fx-background-color: linear-gradient(to bottom right, #1e293b, #111827);" +
+                        "-fx-padding: 9;" +
+                        "-fx-background-radius: 9;" +
+                        "-fx-border-color: #334155;" +
+                        "-fx-border-radius: 9;" +
+                        "-fx-border-width: 1;"
+        );
+
         Label lblTitulo = new Label(titulo);
-        lblTitulo.setStyle("-fx-text-fill: #a4b0be; -fx-font-weight: bold; -fx-font-size: 12px;");
+        lblTitulo.setStyle("-fx-text-fill: #eab308; -fx-font-size: 10px; -fx-font-weight: bold;");
+
         box.getChildren().add(lblTitulo);
         return box;
     }
 
     private Label criarTextoInfo(String label, int valor, String corHex) {
         Label l = new Label(label + valor);
-        l.setStyle("-fx-text-fill: " + corHex + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        l.setStyle("-fx-text-fill: " + corHex + "; -fx-font-size: 11px; -fx-font-weight: bold;");
         return l;
     }
+
     private Label criarTextoInfo(String label, String valor, String corHex) {
         Label l = new Label(label + valor);
-        l.setStyle("-fx-text-fill: " + corHex + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        l.setStyle("-fx-text-fill: " + corHex + "; -fx-font-size: 11px; -fx-font-weight: bold;");
         return l;
     }
 }
